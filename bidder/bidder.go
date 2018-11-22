@@ -3,6 +3,7 @@ package bidder
 import (
 	//"log"
     _ "net/rpc"
+    "net.http"
 )
 
 
@@ -26,11 +27,23 @@ func InitBidder(sellerAddr string) Bidder {
 }
 
 
+
 // =============== REST call to seller ===============
-func getConfig() {
+// Get configuration from the seller
+func getConfig(sellerIP string, port int) {
+    uri := sellerIP + "/seller/config"
+    response, err := http.get(uri)
+    if err != nil {
+        log.Fatalf("Failed to get config file from seller: %v", err)
+        os.Exit(1)
+    }
+    log.Printf("Config msg: %v", response)
 }
 
+// Query current round's price range from the seller
 func (b Bidder) updatePriceRange() {
+    uri := b.sellerIP + "/seller/priceRange"
+    //sellerIP string
 }
 
 func (b Bidder) getRoundStatus() {
