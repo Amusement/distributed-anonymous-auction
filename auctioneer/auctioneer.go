@@ -2,11 +2,14 @@ package auctioneer
 
 import (
 	"../common"
+	"encoding/json"
+	"fmt"
+	"github.com/gorilla/mux"
 	"log"
-	"net"
 	"net/http"
-	"net/rpc"
 	"sync"
+
+	"github.com/googollee/go-socket.io"
 )
 
 type Auctioneer struct {
@@ -33,22 +36,43 @@ func Initialize(config Config) *Auctioneer {
 }
 
 func (a *Auctioneer) Start() {
-	server := &AuctionRpcServer{a}
-	rpc.Register(server)
-	rpc.HandleHTTP()
-	l, e := net.Listen("tcp", a.config.LocalIpPort)
-	if e != nil {
-		log.Fatal("listen error:", e)
+	socketSever, err := socketio.NewServer(nil)
+	if err != nil {
+		log.Fatal(err)
 	}
-	http.Serve(l, nil)
+	socketSever.On("connection", func(so socketio.Socket) {
+		so.On("bidder", func(msg string) {
+			log.Println(so.Id(), " got bid from ", msg)
+		})
+		so.On("disconnection", func() {
+			log.Println("Disconnected from peer")
+		})
+	})
+
+	socketSever.On("error", func(so socketio.Socket, err error) {
+		log.Println("error:", err)
+	})
+
+	http.Handle("/socket.io/", socketSever)
+
+	rtr := mux.NewRouter()
+	rtr.HandleFunc("/auctioneer/sendBid", a.SendBid).Methods("POST")
+
+	// Run the REST server
+	log.Println("Starting the auctioneer server...")
+	err = http.ListenAndServe(a.config.LocalIpPort, rtr)
+	log.Printf("Error: %v", err)
 }
 
 // Receives bids from a bidder and returns if true if it was successfully received
-func (a *AuctionRpcServer) ReceiveBid(bidPoints *common.BidPoints, reply *bool) error {
-	a.Auctioneer.bidMutex.Lock()
-	a.Auctioneer.currentBids[bidPoints.BidderID] = bidPoints.Points
-	a.Auctioneer.bidMutex.Unlock()
-	*reply = true
-	return nil
 
+func (a *Auctioneer) SendBid(w http.ResponseWriter, r *http.Request) {
+	var bidPoints common.BidPoints
+	_ = json.NewDecoder(r.Body).Decode(&bidPoints)
+
+	fmt.Println("Received bid from ", bidPoints.BidderID)
+	a.bidMutex.Lock()
+	a.currentBids[bidPoints.BidderID] = bidPoints.Points
+	a.bidMutex.Unlock()
+	w.WriteHeader(200)
 }
