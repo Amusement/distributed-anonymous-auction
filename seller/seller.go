@@ -1,8 +1,20 @@
-/*
-This package specifies the seller API
-*/
-
 package seller
+
+/*
+   Currently working feature
+       - Seller can generate its own RSA key value
+       - Basic REST api function working
+           - Can query public key
+           - Can query auctioneer list
+
+   Need to implement (not a whole list)
+       - Prices logic
+       - Round logic
+           - Start time / End time logic
+       - Winner declaration logic
+           - decodeID function is implemented, use this to figure it out
+       - Communication to auctioneers using their REST API
+*/
 
 import (
 	"../common"
