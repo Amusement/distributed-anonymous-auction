@@ -29,15 +29,17 @@ import (
 var seller Seller
 
 type Config struct {
-	Auctioneers []string
-	StartTime   string
+	Item        string
+	prices      []int
+	round       int
+	auctioneers []string
+	startTime   string
+	timeLimit   int
 }
 
 type Seller struct {
 	config     Config
 	router     *mux.Router
-	prices     []int
-	currRound  int
 	publicKey  rsa.PublicKey
 	privateKey *rsa.PrivateKey
 }
@@ -93,7 +95,7 @@ func GetPrices(w http.ResponseWriter, r *http.Request) {
 }
 
 func GetAuctioneers(w http.ResponseWriter, r *http.Request) {
-	data, err := json.Marshal(seller.config.Auctioneers)
+	data, err := json.Marshal(seller.config.auctioneers)
 	if err != nil {
 		log.Fatalf("error on GetAuctioneers: %v", err)
 	}
