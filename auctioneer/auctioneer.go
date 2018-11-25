@@ -5,8 +5,8 @@ import (
 	"encoding/json"
 	"fmt"
 	"github.com/gorilla/mux"
-	"github.com/rsms/gotalk"
 	"log"
+	"math/big"
 	"net/http"
 	"sync"
 )
@@ -15,7 +15,8 @@ type Auctioneer struct {
 	config      Config
 	round       uint
 	bidMutex    *sync.Mutex
-	currentBids map[string][]common.Point
+	currentBids map[common.Price][]common.Point
+	bidders     map[string]struct{}
 	peers       []string
 }
 
@@ -32,26 +33,17 @@ type AuctionRpcServer struct {
 func Initialize(config Config) *Auctioneer {
 	return &Auctioneer{config: config,
 		round:       0,
-		currentBids: make(map[string][]common.Point),
+		currentBids: make(map[common.Price][]common.Point),
+		bidders:    make(map[string]struct{}),
 		bidMutex:    &sync.Mutex{}}
 }
 
-type bidderMsg struct {
-	source   string
-	bidderID string
-}
-
 func (a *Auctioneer) Start() {
-	gotalk.Handle("bidder", func(msg bidderMsg) (error) {
-		fmt.Println(msg.source, " got a bid from ", msg.bidderID)
-		return nil
-	})
-	http.Handle("/gotalk/", gotalk.WebSocketHandler())
-
 	a.UpdatePeers()
 
 	rtr := mux.NewRouter()
 	rtr.HandleFunc("/auctioneer/sendBid", a.SendBid).Methods("POST")
+	rtr.HandleFunc("/auctioneer/compressedPoints", a.GetCompressedPoints).Methods("GET")
 
 	log.Println("Starting the auctioneer server...")
 	err := http.ListenAndServe(a.config.LocalIpPort, rtr)
@@ -90,12 +82,40 @@ func (a *Auctioneer) UpdatePeers() {
 
 func (a *Auctioneer) SendBid(w http.ResponseWriter, r *http.Request) {
 	var bidPoints common.BidPoints
-	_ = json.NewDecoder(r.Body).Decode(&bidPoints)
-
-	gotalk.Connect("tcp", )
+	err := json.NewDecoder(r.Body).Decode(&bidPoints)
+	if err != nil{
+		fmt.Println(err)
+	}
 	fmt.Println("Received bid from ", bidPoints.BidderID)
 	a.bidMutex.Lock()
-	a.currentBids[bidPoints.BidderID] = bidPoints.Points
+	for price, points := range bidPoints.Points {
+		a.currentBids[price] = append(a.currentBids[price], points)
+	}
+	a.bidders[bidPoints.BidderID] = struct{}{}
 	a.bidMutex.Unlock()
 	w.WriteHeader(200)
+}
+
+func (a *Auctioneer) GetCompressedPoints(w http.ResponseWriter, r *http.Request) {
+	err := json.NewEncoder(w).Encode(a.calculateCompressedPoints())
+	if err != nil{
+		fmt.Println(err)
+	}
+}
+
+func (a *Auctioneer) calculateCompressedPoints() common.CompressedPoints {
+	a.bidMutex.Lock()
+	defer a.bidMutex.Unlock()
+	compressedPoints := common.CompressedPoints{make(map[common.Price]common.Point)}
+	for key, points := range a.currentBids {
+		var sum big.Int
+		for _, p := range points {
+			point :=  p.Y.Val
+			sum.Add(&sum, point)
+		}
+		compressedPoints.Points[key] = common.Point{points[0].X, common.BigInt{&sum}}
+	}
+	fmt.Println("Price point ",compressedPoints )
+
+	return compressedPoints
 }
