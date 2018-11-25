@@ -24,27 +24,27 @@ import (
 	"log"
 	"net/http"
 	"os"
+	"time"
 )
-
-var seller Seller
 
 type Config struct {
 	Item        string
-	prices      []int
-	round       int
-	auctioneers []string
-	startTime   string
-	timeLimit   int
+	Auctioneers []string
+	StartTime   time.Time
+	Interval    time.Duration
+	T_Value     int
 }
 
 type Seller struct {
-	config     Config
+	Config     Config
 	router     *mux.Router
+	Prices     []string
+	CurrRound  int
 	publicKey  rsa.PublicKey
 	privateKey *rsa.PrivateKey
 }
 
-func Initialize(address, configFile string) {
+func Initialize(configFile string) *Seller {
 	// Get configuration of the seller
 	var config Config
 	file, err := os.Open(configFile)
@@ -60,42 +60,39 @@ func Initialize(address, configFile string) {
 		os.Exit(1)
 	}
 
-	// Set callbacks for REST
+	// Create a new router
 	rtr := mux.NewRouter()
-	rtr.HandleFunc("/seller/item", GetItem).Methods("GET")
-	rtr.HandleFunc("/seller/prices", GetPrices).Methods("GET")
-	rtr.HandleFunc("/seller/auctioneers", GetAuctioneers).Methods("GET")
-	rtr.HandleFunc("/seller/round", GetRoundNumber).Methods("GET")
-	rtr.HandleFunc("/seller/startTime", GetStartTime).Methods("GET")
-	rtr.HandleFunc("/seller/timeLimit", GetTimeLimit).Methods("GET")
-	rtr.HandleFunc("/seller/key", GetPublicKey).Methods("GET")
 
 	// Create a global seller
 	privK, pubK := common.GenerateRSA() // Generate RSA key pair
-	seller = Seller{
-		config:     config,
+	seller := &Seller{
+		Config:     config,
 		router:     rtr,
 		publicKey:  pubK,
 		privateKey: privK,
 	}
+	return seller
+}
+
+func (s *Seller) StartAuction(address string) {
+	s.router.HandleFunc("/seller/key", s.GetPublicKey).Methods("GET")
+	s.router.HandleFunc("/seller/auctioneers", s.GetAuctioneers).Methods("GET")
+	s.router.HandleFunc("/seller/round", s.GetRoundNumber).Methods("GET")
+	s.router.HandleFunc("/seller/price", s.GetPrice).Methods("GET")
+	// TODO: Add more functions
 
 	// Run the REST server
-	log.Println("Starting the seller server...")
-	err = http.ListenAndServe(address, rtr)
-	log.Printf("Error: %v", err)
-	log.Printf("Public key: %v", seller.publicKey)
+	log.Printf("Error: %v", http.ListenAndServe(address, s.router))
 }
 
-func GetItem(w http.ResponseWriter, r *http.Request) {
-
+func (s *Seller) GetPublicKey(w http.ResponseWriter, r *http.Request) {
+	data := common.MarshalKeyToPem(s.publicKey)
+	w.Header().Set("Content-Type", "application/json; charset=UTF-8")
+	w.Write(data)
 }
 
-func GetPrices(w http.ResponseWriter, r *http.Request) {
-
-}
-
-func GetAuctioneers(w http.ResponseWriter, r *http.Request) {
-	data, err := json.Marshal(seller.config.auctioneers)
+func (s *Seller) GetAuctioneers(w http.ResponseWriter, r *http.Request) {
+	data, err := json.Marshal(s.Config.Auctioneers)
 	if err != nil {
 		log.Fatalf("error on GetAuctioneers: %v", err)
 	}
@@ -103,29 +100,22 @@ func GetAuctioneers(w http.ResponseWriter, r *http.Request) {
 	w.Write(data)
 }
 
-func GetRoundNumber(w http.ResponseWriter, r *http.Request) {
-
+func (s *Seller) GetRoundNumber(w http.ResponseWriter, r *http.Request) {
+	data, _ := json.Marshal(s.CurrRound)
+	w.Header().Set("Content-Type", "application/json; charset=UTF-8")
+	w.Write(data)
 }
 
-func GetStartTime(w http.ResponseWriter, r *http.Request) {
-
-}
-
-func GetTimeLimit(w http.ResponseWriter, r *http.Request) {
-
-}
-
-func GetPublicKey(w http.ResponseWriter, r *http.Request) {
-	data := common.MarshalKeyToPem(seller.publicKey)
+func (s *Seller) GetPrice(w http.ResponseWriter, r *http.Request) {
+	data, _ := json.Marshal(s.Prices)
 	w.Header().Set("Content-Type", "application/json; charset=UTF-8")
 	w.Write(data)
 }
 
 // Seller's private function ===========
-
-func decodeID(msg []byte) {
+func (s *Seller) decodeID(msg []byte) {
 	// Attempt to decode the message. If the decoded message is not in ip + price, we go to next round
-	msg, err := common.DecryptID(msg, seller.privateKey)
+	msg, err := common.DecryptID(msg, s.privateKey)
 	if err != nil {
 		log.Fatalf("Error decrypting message: %v", err)
 		// handle error
