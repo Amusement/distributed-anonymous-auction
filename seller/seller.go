@@ -79,6 +79,7 @@ func (s *Seller) StartAuction(address string) {
 	s.router.HandleFunc("/seller/auctioneers", s.GetAuctioneers).Methods("GET")
 	s.router.HandleFunc("/seller/round", s.GetRoundNumber).Methods("GET")
 	s.router.HandleFunc("/seller/price", s.GetPrice).Methods("GET")
+	s.router.HandleFunc("/seller/item", s.GetItem).Methods("GET")
 	// TODO: Add more functions
 
 	// Run the REST server
@@ -108,6 +109,12 @@ func (s *Seller) GetRoundNumber(w http.ResponseWriter, r *http.Request) {
 
 func (s *Seller) GetPrice(w http.ResponseWriter, r *http.Request) {
 	data, _ := json.Marshal(s.Prices)
+	w.Header().Set("Content-Type", "application/json; charset=UTF-8")
+	w.Write(data)
+}
+
+func (s *Seller) GetItem(w http.ResponseWriter, r *http.Request) {
+	data, _ := json.Marshal(s.Config.Item)
 	w.Header().Set("Content-Type", "application/json; charset=UTF-8")
 	w.Write(data)
 }
