@@ -5,6 +5,7 @@ import (
 )
 
 type Price uint
+
 type BigInt struct {
 	Val *big.Int
 }
@@ -24,12 +25,12 @@ type CompressedPoints struct {
 	Points map[Price]Point
 }
 
-
 func (bigint BigInt) MarshalJSON() ([]byte, error) {
 	return []byte(bigint.Val.String()), nil
 }
+
 func (bigint *BigInt) UnmarshalJSON(b []byte) error {
-	val  := string(b[:])
+	val := string(b[:])
 
 	n := new(big.Int)
 	n.SetString(val, 10)

@@ -34,7 +34,7 @@ func Initialize(config Config) *Auctioneer {
 	return &Auctioneer{config: config,
 		round:       0,
 		currentBids: make(map[common.Price][]common.Point),
-		bidders:    make(map[string]struct{}),
+		bidders:     make(map[string]struct{}),
 		bidMutex:    &sync.Mutex{}}
 }
 
@@ -83,7 +83,7 @@ func (a *Auctioneer) UpdatePeers() {
 func (a *Auctioneer) SendBid(w http.ResponseWriter, r *http.Request) {
 	var bidPoints common.BidPoints
 	err := json.NewDecoder(r.Body).Decode(&bidPoints)
-	if err != nil{
+	if err != nil {
 		fmt.Println(err)
 	}
 	fmt.Println("Received bid from ", bidPoints.BidderID)
@@ -98,7 +98,7 @@ func (a *Auctioneer) SendBid(w http.ResponseWriter, r *http.Request) {
 
 func (a *Auctioneer) GetCompressedPoints(w http.ResponseWriter, r *http.Request) {
 	err := json.NewEncoder(w).Encode(a.calculateCompressedPoints())
-	if err != nil{
+	if err != nil {
 		fmt.Println(err)
 	}
 }
@@ -110,12 +110,12 @@ func (a *Auctioneer) calculateCompressedPoints() common.CompressedPoints {
 	for key, points := range a.currentBids {
 		var sum big.Int
 		for _, p := range points {
-			point :=  p.Y.Val
+			point := p.Y.Val
 			sum.Add(&sum, point)
 		}
 		compressedPoints.Points[key] = common.Point{points[0].X, common.BigInt{&sum}}
 	}
-	fmt.Println("Price point ",compressedPoints )
+	fmt.Println("Price point ", compressedPoints)
 
 	return compressedPoints
 }
