@@ -103,7 +103,10 @@ func (s *Seller) GetAuctioneers(w http.ResponseWriter, r *http.Request) {
 
 
 func (s *Seller) GetRoundNumber(w http.ResponseWriter, r *http.Request) {
-	data, _ := json.Marshal(s.Config.RoundNumber)
+	data, err := json.Marshal(s.Config.RoundNumber)
+	if err != nil {
+		log.Fatalf("error on GetRoundNumber: %v", err)
+	}
 	w.Header().Set("Content-Type", "application/json; charset=UTF-8")
 	w.Write(data)
 }
@@ -111,14 +114,17 @@ func (s *Seller) GetRoundNumber(w http.ResponseWriter, r *http.Request) {
 func (s *Seller) GetPrices(w http.ResponseWriter, r *http.Request) {
 	data, err := json.Marshal(s.Config.Prices)
 	if err != nil {
-		log.Fatalf("error on GetAuctioneers: %v", err)
+		log.Fatalf("error on GetPrices: %v", err)
 	}
 	w.Header().Set("Content-Type", "application/json; charset=UTF-8")
 	w.Write(data)
 }
 
 func (s *Seller) GetItem(w http.ResponseWriter, r *http.Request) {
-	data, _ := json.Marshal(s.Config.Item)
+	data, err := json.Marshal(s.Config.Item)
+	if err != nil {
+		log.Fatalf("error on GetItem: %v", err)
+	}
 	w.Header().Set("Content-Type", "application/json; charset=UTF-8")
 	w.Write(data)
 }
