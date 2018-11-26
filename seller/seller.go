@@ -29,8 +29,8 @@ import (
 
 type Config struct {
 	Item        string
-	Prices      []int
-	RoundNumber int
+	Prices      []string
+	CurrRound   int
 	Auctioneers []string
 	StartTime   time.Time
 	TimeLimit   int
@@ -103,7 +103,7 @@ func (s *Seller) GetAuctioneers(w http.ResponseWriter, r *http.Request) {
 
 
 func (s *Seller) GetRoundNumber(w http.ResponseWriter, r *http.Request) {
-	data, err := json.Marshal(s.Config.RoundNumber)
+	data, err := json.Marshal(s.Config.CurrRound)
 	if err != nil {
 		log.Fatalf("error on GetRoundNumber: %v", err)
 	}

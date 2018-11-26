@@ -3,7 +3,6 @@ package tests
 import (
 	"../seller"
 	"encoding/json"
-	"fmt"
 	"net/http"
 	"testing"
 )
@@ -45,11 +44,10 @@ func TestGetPrices(t *testing.T) {
 	seller := seller.Initialize("test_config.json")
 	go seller.StartAuction("127.0.0.1:8383")
 	resp, _ := http.Get("http://localhost:8383/seller/prices")
-	var prices []int
+	var prices []string
 	json.NewDecoder(resp.Body).Decode(&prices)
-	fmt.Println(prices)
-	if prices[0] != 300 || prices[1] != 400 || prices[2] != 500 {
-		t.Errorf("Item was incorrect, got: %d, want: %d.", prices, []int{300, 400, 500})
+	if prices[0] != "300" || prices[1] != "400" || prices[2] != "500" {
+		t.Errorf("Item was incorrect, got: %d, want: %d.", prices, []string{"300", "400", "500"})
 	}
 }
 //

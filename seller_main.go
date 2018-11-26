@@ -32,10 +32,10 @@ func main() {
 
 	reader := bufio.NewReader(os.Stdin)
 	for {
-		fmt.Printf("Enter list of prices seperated by space for round %v:\n", s.CurrRound+1)
+		fmt.Printf("Enter list of prices seperated by space for round %v:\n", s.Config.CurrRound+1)
 		priceRange, _ := reader.ReadString('\n')
-		s.Prices = strings.Split(strings.TrimSpace(priceRange), "\n")
-		s.CurrRound += 1
+		s.Config.Prices = strings.Split(strings.TrimSpace(priceRange), "\n")
+		s.Config.CurrRound += 1
 
 		fmt.Println("Waiting for current round to finish...")
 		for s.Config.StartTime.Add(s.Config.Interval).After(time.Now().UTC()) {
