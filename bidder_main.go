@@ -7,7 +7,7 @@ import (
 )
 
 func main() {
-    log.Println("Bidder client starting... hello world")
+    log.Println("Bidder client starting.")
 
     if len(os.Args) != 2 {
         log.Fatalf("Usage: bidder_client.go [seller_ip_address]")

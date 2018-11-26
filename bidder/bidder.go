@@ -3,7 +3,7 @@ package bidder
 /*
    Currently working feature
        - Basic initializtion of bidder
-           - Can get list of auctioneers and public key from seller
+           - Can get list of auctioneers, public key, startTime, prices from seller
 
    Need to implement (not a whole list)
        - Round logic helper fuctions for bidder_client.go
@@ -20,12 +20,14 @@ import (
 	"os"
 )
 
+// TODO: Finalize types
 type Bidder struct {
 	// List of clients
 	listOfAuctioneers []string
 	publicKey         string
 	sellerIP          string
 	startTime         string
+	prices		  []string
 }
 
 func InitBidder(sellerAddr string) Bidder {
@@ -67,7 +69,26 @@ func (b *Bidder) getConfig() {
 	}
 
 	// Get start time
-	// TODO
+	uri = b.sellerIP + "/seller/time/start"
+	response, err = http.Get(uri)
+	if err != nil {
+		log.Fatalf("Failed to get starting time from seller: %v", err)
+		os.Exit(1)
+	} else {
+		data, _ := ioutil.ReadAll(response.Body)
+		b.startTime = string(data)
+	}
+
+	// Get prices 
+	uri = b.sellerIP + "/seller/prices"
+	response, err = http.Get(uri)
+	if err != nil {
+		log.Fatalf("Failed to get prices from seller: %v", err)
+		os.Exit(1)
+	} else {
+		data, _ := ioutil.ReadAll(response.Body)
+		json.Unmarshal(data, &b.prices)
+	}
 
 	// Generate N polynomials depending on price range
 }
