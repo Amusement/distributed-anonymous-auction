@@ -13,7 +13,7 @@ package seller
            - Start time / End time logic
        - Winner declaration logic
            - decodeID function is implemented, use this to figure it out
-       - Communication to auctioneers using their REST API
+       - Communication to Auctioneers using their REST API
 */
 
 import (
@@ -29,17 +29,18 @@ import (
 
 type Config struct {
 	Item        string
+	Prices      []int
+	RoundNumber int
 	Auctioneers []string
 	StartTime   time.Time
+	TimeLimit   int
 	Interval    time.Duration
-	T_Value     int
+	T_value     int
 }
 
 type Seller struct {
 	Config     Config
 	router     *mux.Router
-	Prices     []string
-	CurrRound  int
 	publicKey  rsa.PublicKey
 	privateKey *rsa.PrivateKey
 }
@@ -76,12 +77,11 @@ func Initialize(configFile string) *Seller {
 
 func (s *Seller) StartAuction(address string) {
 	s.router.HandleFunc("/seller/key", s.GetPublicKey).Methods("GET")
-	s.router.HandleFunc("/seller/auctioneers", s.GetAuctioneers).Methods("GET")
+	s.router.HandleFunc("/seller/Auctioneers", s.GetAuctioneers).Methods("GET")
 	s.router.HandleFunc("/seller/round", s.GetRoundNumber).Methods("GET")
-	s.router.HandleFunc("/seller/price", s.GetPrice).Methods("GET")
-	s.router.HandleFunc("/seller/item", s.GetItem).Methods("GET")
+	s.router.HandleFunc("/seller/prices", s.GetPrices).Methods("GET")
+	s.router.HandleFunc("/seller/Item", s.GetItem).Methods("GET")
 	// TODO: Add more functions
-
 	// Run the REST server
 	log.Printf("Error: %v", http.ListenAndServe(address, s.router))
 }
@@ -101,14 +101,18 @@ func (s *Seller) GetAuctioneers(w http.ResponseWriter, r *http.Request) {
 	w.Write(data)
 }
 
+
 func (s *Seller) GetRoundNumber(w http.ResponseWriter, r *http.Request) {
-	data, _ := json.Marshal(s.CurrRound)
+	data, _ := json.Marshal(s.Config.RoundNumber)
 	w.Header().Set("Content-Type", "application/json; charset=UTF-8")
 	w.Write(data)
 }
 
-func (s *Seller) GetPrice(w http.ResponseWriter, r *http.Request) {
-	data, _ := json.Marshal(s.Prices)
+func (s *Seller) GetPrices(w http.ResponseWriter, r *http.Request) {
+	data, err := json.Marshal(s.Config.Prices)
+	if err != nil {
+		log.Fatalf("error on GetAuctioneers: %v", err)
+	}
 	w.Header().Set("Content-Type", "application/json; charset=UTF-8")
 	w.Write(data)
 }
