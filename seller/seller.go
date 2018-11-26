@@ -6,6 +6,12 @@ package seller
        - Basic REST api function working
            - Can query public key
            - Can query auctioneer list
+           - Can query  prices
+           - Can query current round
+           - Can query start time
+           - Can query time limit
+           - Can query interval
+           - Can query t_value
 
    Need to implement (not a whole list)
        - Prices logic
@@ -81,7 +87,10 @@ func (s *Seller) StartAuction(address string) {
 	s.router.HandleFunc("/seller/round", s.GetRoundNumber).Methods("GET")
 	s.router.HandleFunc("/seller/prices", s.GetPrices).Methods("GET")
 	s.router.HandleFunc("/seller/Item", s.GetItem).Methods("GET")
-	// TODO: Add more functions
+	s.router.HandleFunc("/seller/tvalue", s.GetTValue).Methods("GET")
+	s.router.HandleFunc("/seller/time/start", s.GetStartTime).Methods("GET")
+	s.router.HandleFunc("/seller/time/limit", s.GetTimeLimit).Methods("GET")
+	s.router.HandleFunc("/seller/time/interval", s.GetInterval).Methods("GET")
 	// Run the REST server
 	log.Printf("Error: %v", http.ListenAndServe(address, s.router))
 }
@@ -124,6 +133,42 @@ func (s *Seller) GetItem(w http.ResponseWriter, r *http.Request) {
 	data, err := json.Marshal(s.Config.Item)
 	if err != nil {
 		log.Fatalf("error on GetItem: %v", err)
+	}
+	w.Header().Set("Content-Type", "application/json; charset=UTF-8")
+	w.Write(data)
+}
+
+func (s *Seller) GetTValue(w http.ResponseWriter, r *http.Request) {
+	data, err := json.Marshal(s.Config.T_value)
+	if err != nil {
+		log.Fatalf("error on GetTvalue: %v", err)
+	}
+	w.Header().Set("Content-Type", "application/json; charset=UTF-8")
+	w.Write(data)
+}
+
+func (s *Seller) GetStartTime(w http.ResponseWriter, r *http.Request) {
+	data, err := json.Marshal(s.Config.StartTime)
+	if err != nil {
+		log.Fatalf("error on GetStartTime: %v", err)
+	}
+	w.Header().Set("Content-Type", "application/json; charset=UTF-8")
+	w.Write(data)
+}
+
+func (s *Seller) GetTimeLimit(w http.ResponseWriter, r *http.Request) {
+	data, err := json.Marshal(s.Config.TimeLimit)
+	if err != nil {
+		log.Fatalf("error on GetTimeLimit: %v", err)
+	}
+	w.Header().Set("Content-Type", "application/json; charset=UTF-8")
+	w.Write(data)
+}
+
+func (s *Seller) GetInterval(w http.ResponseWriter, r *http.Request) {
+	data, err := json.Marshal(s.Config.Interval)
+	if err != nil {
+		log.Fatalf("error on GetInterval: %v", err)
 	}
 	w.Header().Set("Content-Type", "application/json; charset=UTF-8")
 	w.Write(data)
