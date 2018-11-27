@@ -75,7 +75,7 @@ func (b *Bidder) ProcessBid(maxBid int) {
 	chosenPort := 4331
 	fmt.Println("Chose port: ", chosenPort)
 
-	var polynomials [][]*big.Int
+	var polynomials []polynomial.Poly
 	for _, price := range b.RoundInfo.Prices {
 		if price <= maxBidU {
 			id := b.selfIdentify(chosenPort, price)
@@ -86,15 +86,37 @@ func (b *Bidder) ProcessBid(maxBid int) {
 	}
 
 	fmt.Println("The following random polynomials were generated:\n", polynomials)
-	//b.samplePoints(polynomials)
+	b.samplePoints(polynomials)
 }
 
-func (b *Bidder) samplePoints(polynomials [][]*big.Int) {
-	// Prepare, but do not send, the points for each auctioneer
+// Prepare, but do not send, the points for each auctioneer
+// Important note: auctioneers are given points corresponding to their order
+func (b *Bidder) samplePoints(polynomials []polynomial.Poly) {
 	// example entry: 1:500:[(1,2)]
 	//				  1:700:[(1,19)]
-	//var aucPricePoints map[int]map[uint][]common.Point
+	auctioneerPricePoints := make(map[int]map[uint]common.Point)
 
+	for i, _ := range b.RoundInfo.Auctioneers {
+		x := i+1
+		// Initialize nested map
+		auctioneerPricePoints[x] = make(map[uint]common.Point)
+		for _, price := range b.RoundInfo.Prices {
+			// Evaluate polynomial for this price at the point x
+			bigX := big.NewInt(int64(x))
+			y := common.BigInt{
+				polynomials[i].Eval(bigX, nil),
+			}
+
+			sampledPoint := common.Point{
+				x,
+				y,
+			}
+
+			auctioneerPricePoints[i+1][price] = sampledPoint
+		}
+	}
+
+	fmt.Printf("The following points were sampled:\n%v", auctioneerPricePoints)
 }
 
 // Make a secretID using the given port for given price
@@ -114,7 +136,7 @@ func (b *Bidder) selfIdentify(chosenPort int, price uint) *big.Int {
 }
 
 // f(x) = 3x^3 + 2x + 1 => [1 2 0 3]
-func generatePolynomial(degree int, id *big.Int) []*big.Int {
+func generatePolynomial(degree int, id *big.Int) polynomial.Poly {
 	poly := polynomial.RandomPoly(int64(degree), 5) // 5 is hard coded to make coefficients 2^5 at most
 
 	// Change the ID

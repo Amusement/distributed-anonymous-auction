@@ -6,11 +6,12 @@ import (
 
 type Price uint
 
+// TODO: Why does this exist? *big.Int is simple enough
 type BigInt struct {
 	Val *big.Int
 }
 
-// X is int, since auctioneers are ordered {1,2,...,N}
+// X is int, since auctioneers are ordered {1,2,...,N} for small N
 // Y is big.Int, since our IDs can get huge
 type Point struct {
 	X int
