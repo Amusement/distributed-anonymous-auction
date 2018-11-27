@@ -10,9 +10,10 @@ type BigInt struct {
 	Val *big.Int
 }
 
-// Data is big.Int, since our IDs can get huge
+// X is int, since auctioneers are ordered {1,2,...,N}
+// Y is big.Int, since our IDs can get huge
 type Point struct {
-	X BigInt
+	X int
 	Y BigInt
 }
 

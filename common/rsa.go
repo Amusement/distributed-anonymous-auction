@@ -8,10 +8,11 @@ import (
 	"crypto/rand"
 	"crypto/rsa"
 	"crypto/sha256"
-	"crypto/x509"
 	"encoding/asn1"
 	"encoding/pem"
 	"log"
+	"errors"
+	"fmt"
 )
 
 // Create RSA key pair in PEM format - used by seller only
@@ -40,31 +41,27 @@ func MarshalKeyToPem(key rsa.PublicKey) []byte {
 }
 
 // Unmarshal rsa public key
-func UnmarshalPemToKey(rawKey []byte) rsa.PublicKey {
+func UnmarshalPemToKey(rawKey []byte) (*rsa.PublicKey, error) {
 	block, _ := pem.Decode(rawKey)
 	if block == nil || block.Type != "PUBLIC KEY" {
-		log.Fatalf("Error decoding the key")
-		// TODO: handle error
+		return nil, errors.New("Error decoding the key")
 	}
 
-	pub, err := x509.ParsePKIXPublicKey(block.Bytes)
+	var pk rsa.PublicKey
+	_, err := asn1.Unmarshal(block.Bytes, &pk)
 	if err != nil {
-		log.Fatalf("Error decoding: %v", err)
-		// TODO: handle error
+		return nil, errors.New(fmt.Sprintf("Error on decoding pk: %v", pk))
 	}
-	pk, ok := pub.(rsa.PublicKey)
-	if !ok {
-		log.Fatalf("type assertion failed")
-		// TODO: handle error
-	}
-	return pk
+
+	return &pk, nil
 }
 
-func EncryptID(ipAddress, price string, publicKey *rsa.PublicKey) ([]byte, error) {
+// TODO: Return big.Int?
+func EncryptID(ipAddressPort string, price uint, publicKey *rsa.PublicKey) ([]byte, error) {
 	// ID will be bidder's IP address + price encrypted in seller's public key
 	// EX: "127.0.0.1:9091 300" -> encrypted with public key
 	// We use OAEP encryption standrad and NOT PKCK1
-	plainByte := []byte(ipAddress + " " + price)
+	plainByte := []byte(fmt.Sprintf("%v %v", ipAddressPort, price))
 	rng := rand.Reader
 	return rsa.EncryptOAEP(sha256.New(), rng, publicKey, plainByte, []byte(""))
 }

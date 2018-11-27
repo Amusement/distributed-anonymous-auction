@@ -1,12 +1,5 @@
 package bidder
 
-/*
-   Currently working:
-       - Basic initializtion of bidder
-           - Can get list of auctioneers, public key, startTime, Prices from seller
-
-*/
-
 import (
 	"encoding/json"
 	"github.com/jongukim/polynomial"
@@ -17,20 +10,25 @@ import (
 	"os"
 	"P2-d3w9a-b3c0b-b3l0b-k0b9/common"
 	"fmt"
+	"crypto/rsa"
 )
 
 type Bidder struct {
 	RoundInfo		common.AuctionRound			// Initially retrieved round info.
-	sellerPublicKey string
+
+	secretID        int
+	sellerPublicKey *rsa.PublicKey
 	sellerIP        string
+	bidderIP string
 }
 
-func InitBidder(sellerAddr string) *Bidder {
+func InitBidder(sellerAddr string, bidderIP string) *Bidder {
 	b := &Bidder{
 		sellerIP: sellerAddr,
+		bidderIP: bidderIP,
 	}
 	b.learnAuctionRound()
-	//log.Printf("DEBUG: Bidder initialized to: %v", b)
+	//log.Printf("Bidder initialized to: %v", b)
 	return b
 }
 
@@ -41,20 +39,25 @@ func (b *Bidder) learnAuctionRound() {
 	response, err := http.Get(uri)
 	if err != nil {
 		log.Fatalf("Failed to get public key from seller: %v", err)
-		os.Exit(1)
-	} else {
-		data, _ := ioutil.ReadAll(response.Body)
-		b.sellerPublicKey = string(data)
 	}
 
+	// Parse and store seller's public key
+	data, _ := ioutil.ReadAll(response.Body)
+	key, err := common.UnmarshalPemToKey(data)
+	if err != nil {
+		log.Fatalf(err.Error())
+	}
+	b.sellerPublicKey = key
+
+	// Get auction round info
 	url := b.sellerIP + "/seller/roundinfo"
 	response, err = http.Get(url)
 	if err != nil {
 		log.Fatalf("Failed to get round information from seller: %v", err)
-		os.Exit(1)
 	}
-	data, _ := ioutil.ReadAll(response.Body)
 
+	// Parse and store auction round info
+	data, _ = ioutil.ReadAll(response.Body)
 	var roundInfo common.AuctionRound
 	err = json.Unmarshal(data, &roundInfo)
 	if err != nil {
@@ -64,29 +67,58 @@ func (b *Bidder) learnAuctionRound() {
 	b.RoundInfo = roundInfo
 }
 
-// TODO: Get real ID of this bidder
+// TODO: Choosing a hardcoded port for now, not ideal
 func (b *Bidder) ProcessBid(maxBid int) {
-	fakeId := big.NewInt(1999)
+	maxBidU := uint(maxBid)
+
+	// Choose a port, TODO: make port part of Bidder struct? Accessed frequently
+	chosenPort := 4331
+	fmt.Println("Chose port: ", chosenPort)
 
 	var polynomials [][]*big.Int
-	for price := range b.RoundInfo.Prices {
-		if price <= maxBid {
-			polynomials = append(polynomials, generatePolynomial(b.RoundInfo.T, fakeId, true))
+	for _, price := range b.RoundInfo.Prices {
+		if price <= maxBidU {
+			id := b.selfIdentify(chosenPort, price)
+			polynomials = append(polynomials, generatePolynomial(b.RoundInfo.T, id))
 		} else {
-			polynomials = append(polynomials, generatePolynomial(b.RoundInfo.T, fakeId, false))
+			polynomials = append(polynomials, generatePolynomial(b.RoundInfo.T, nil))
 		}
 	}
 
-	fmt.Println("The following random polynomials were generated:")
-	fmt.Println(polynomials)
+	fmt.Println("The following random polynomials were generated:\n", polynomials)
+	//b.samplePoints(polynomials)
+}
+
+func (b *Bidder) samplePoints(polynomials [][]*big.Int) {
+	// Prepare, but do not send, the points for each auctioneer
+	// example entry: 1:500:[(1,2)]
+	//				  1:700:[(1,19)]
+	//var aucPricePoints map[int]map[uint][]common.Point
+
+}
+
+// Make a secretID using the given port for given price
+func (b *Bidder) selfIdentify(chosenPort int, price uint) *big.Int {
+	localIPPort := fmt.Sprintf("%v:%v", b.bidderIP, chosenPort)
+
+	encryptedIDBytes, err := common.EncryptID(localIPPort, price, b.sellerPublicKey)
+	if err != nil {
+		// TODO: Error handling?
+		log.Fatalf("Failed to encrypt bidder secretID: %v", err)
+	}
+
+	id := big.NewInt(0)
+	id = id.SetBytes(encryptedIDBytes)
+
+	return id
 }
 
 // f(x) = 3x^3 + 2x + 1 => [1 2 0 3]
-func generatePolynomial(degree int, id *big.Int, wantToBidThis bool) []*big.Int {
+func generatePolynomial(degree int, id *big.Int) []*big.Int {
 	poly := polynomial.RandomPoly(int64(degree), 5) // 5 is hard coded to make coefficients 2^5 at most
 
 	// Change the ID
-	if wantToBidThis {
+	if id != nil {
 		poly[0] = id
 	} else {
 		poly[0] = big.NewInt(0)
