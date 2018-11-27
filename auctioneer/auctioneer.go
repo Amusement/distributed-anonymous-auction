@@ -39,7 +39,7 @@ func Initialize(config Config) *Auctioneer {
 }
 
 func (a *Auctioneer) Start() {
-	a.UpdatePeers()
+	a.UpdateRoundInfo()
 
 	rtr := mux.NewRouter()
 	rtr.HandleFunc("/auctioneer/sendBid", a.SendBid).Methods("POST")
@@ -50,7 +50,7 @@ func (a *Auctioneer) Start() {
 	log.Printf("Error: %v", err)
 }
 
-func (a *Auctioneer) UpdatePeers() {
+func (a *Auctioneer) UpdateRoundInfo() {
 	req, err := http.NewRequest("GET", "http://"+a.config.SellerIpPort+"/seller/roundinfo", nil)
 	client := &http.Client{}
 
