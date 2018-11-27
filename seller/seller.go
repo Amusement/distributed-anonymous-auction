@@ -9,8 +9,7 @@ package seller
            - Can query  prices
            - Can query current round
            - Can query start time
-           - Can query time limit
-           - Can query interval
+
            - Can query t_value
 
    Need to implement (not a whole list)
@@ -33,6 +32,7 @@ import (
 	"time"
 )
 
+// TODO: Consider moving some fields into AuctionRound type
 type Config struct {
 	Item        string
 	Prices      []uint
@@ -177,11 +177,17 @@ func (s *Seller) GetInterval(w http.ResponseWriter, r *http.Request) {
 
 
 func (s *Seller) GetRoundInfo(w http.ResponseWriter, r *http.Request) {
-	data, err := json.Marshal(common.AuctionRound{s.Config.StartTime,
-	s.Config.Interval,
-	s.Config.Prices,
-	s.Config.Auctioneers,
-	s.Config.CurrRound})
+	convertedRoundInfo := common.AuctionRound{
+		s.Config.Item,
+		s.Config.StartTime,
+		s.Config.Interval.Seconds(),
+		s.Config.Prices,
+		s.Config.Auctioneers,
+		s.Config.T_value,
+		s.Config.CurrRound,
+	}
+
+	data, err := json.Marshal(convertedRoundInfo)
 	if err != nil {
 		log.Fatalf("error on GetRoundInfo: %v", err)
 	}

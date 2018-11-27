@@ -1,12 +1,9 @@
 package bidder
 
 /*
-   Currently working feature
+   Currently working:
        - Basic initializtion of bidder
-           - Can get list of auctioneers, public key, startTime, prices from seller
-
-   Need to implement (not a whole list)
-       - Round logic helper fuctions for bidder_client.go
+           - Can get list of auctioneers, public key, startTime, Prices from seller
 
 */
 
@@ -18,88 +15,81 @@ import (
 	"math/big"
 	"net/http"
 	"os"
+	"P2-d3w9a-b3c0b-b3l0b-k0b9/common"
+	"fmt"
 )
 
-// TODO: Finalize types
 type Bidder struct {
-	// List of clients
-	listOfAuctioneers []string
-	publicKey         string
-	sellerIP          string
-	startTime         string
-	prices		  []string
+	RoundInfo		common.AuctionRound			// Initially retrieved round info.
+	sellerPublicKey string
+	sellerIP        string
 }
 
-func InitBidder(sellerAddr string) Bidder {
-	//var rawConfig string
-
-	// unmarshal rawConfig, return a bidder
+func InitBidder(sellerAddr string) *Bidder {
 	b := &Bidder{
 		sellerIP: sellerAddr,
 	}
-	b.getConfig()
-	log.Printf("bidder: %v", b)
-	return *b
+	b.learnAuctionRound()
+	//log.Printf("DEBUG: Bidder initialized to: %v", b)
+	return b
 }
 
-// =============== REST call to seller ===============
-
-// Get configuration from the seller
-func (b *Bidder) getConfig() {
-	// Get public key
+// Directly learn the auction round configuration from the seller along with public key
+func (b *Bidder) learnAuctionRound() {
+	// Get seller's public key
 	uri := b.sellerIP + "/seller/key"
 	response, err := http.Get(uri)
 	if err != nil {
-		log.Fatalf("Failed to get config file from seller: %v", err)
+		log.Fatalf("Failed to get public key from seller: %v", err)
 		os.Exit(1)
 	} else {
 		data, _ := ioutil.ReadAll(response.Body)
-		b.publicKey = string(data)
+		b.sellerPublicKey = string(data)
 	}
 
-	// Get List of auctioneers
-	uri = b.sellerIP + "/seller/auctioneers"
-	response, err = http.Get(uri)
+	url := b.sellerIP + "/seller/roundinfo"
+	response, err = http.Get(url)
 	if err != nil {
-		log.Fatalf("Failed to get config file from seller: %v", err)
+		log.Fatalf("Failed to get round information from seller: %v", err)
 		os.Exit(1)
-	} else {
-		data, _ := ioutil.ReadAll(response.Body)
-		json.Unmarshal(data, &b.listOfAuctioneers)
 	}
+	data, _ := ioutil.ReadAll(response.Body)
 
-	// Get start time
-	uri = b.sellerIP + "/seller/time/start"
-	response, err = http.Get(uri)
+	var roundInfo common.AuctionRound
+	err = json.Unmarshal(data, &roundInfo)
 	if err != nil {
-		log.Fatalf("Failed to get starting time from seller: %v", err)
+		log.Fatalf("Failed to unmarshal round information from seller: %v", err)
 		os.Exit(1)
-	} else {
-		data, _ := ioutil.ReadAll(response.Body)
-		b.startTime = string(data)
 	}
-
-	// Get prices 
-	uri = b.sellerIP + "/seller/prices"
-	response, err = http.Get(uri)
-	if err != nil {
-		log.Fatalf("Failed to get prices from seller: %v", err)
-		os.Exit(1)
-	} else {
-		data, _ := ioutil.ReadAll(response.Body)
-		json.Unmarshal(data, &b.prices)
-	}
-
-	// Generate N polynomials depending on price range
+	b.RoundInfo = roundInfo
 }
 
-// ============== Other functions ==================
-func generatePolynomial(degree int, id *big.Int) []*big.Int {
-	// f(x) = 3x^3 + 2x + 1 => [1 2 0 3]
+// TODO: Get real ID of this bidder
+func (b *Bidder) ProcessBid(maxBid int) {
+	fakeId := big.NewInt(1999)
 
+	var polynomials [][]*big.Int
+	for price := range b.RoundInfo.Prices {
+		if price <= maxBid {
+			polynomials = append(polynomials, generatePolynomial(b.RoundInfo.T, fakeId, true))
+		} else {
+			polynomials = append(polynomials, generatePolynomial(b.RoundInfo.T, fakeId, false))
+		}
+	}
+
+	fmt.Println("The following random polynomials were generated:")
+	fmt.Println(polynomials)
+}
+
+// f(x) = 3x^3 + 2x + 1 => [1 2 0 3]
+func generatePolynomial(degree int, id *big.Int, wantToBidThis bool) []*big.Int {
 	poly := polynomial.RandomPoly(int64(degree), 5) // 5 is hard coded to make coefficients 2^5 at most
 
 	// Change the ID
-	poly[0] = id
+	if wantToBidThis {
+		poly[0] = id
+	} else {
+		poly[0] = big.NewInt(0)
+	}
 	return poly
 }

@@ -33,10 +33,13 @@ func main() {
 
 	reader := bufio.NewReader(os.Stdin)
 	for {
-		fmt.Printf("Enter list of prices seperated by space for round %v:\n", s.Config.CurrRound+1)
+		fmt.Printf("Enter list of prices separated by comma for round %v:\n", s.Config.CurrRound)
 		priceRange, _ := reader.ReadString('\n')
-		priceStrings := strings.Split(strings.TrimSpace(priceRange), "\n")
+		//priceStrings := strings.Split(strings.TrimSpace(priceRange), "\n")
+		priceStrings := strings.Split(strings.TrimSpace(priceRange), ",")
 		var prices = []uint{}
+
+		log.Println("Got pricerange: ", priceStrings, " of length: ", len(priceRange))
 
 		for _, i := range priceStrings {
 			j, err := strconv.ParseUint(i, 10, 32)
