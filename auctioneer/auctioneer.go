@@ -17,7 +17,7 @@ type Auctioneer struct {
 	bidMutex    *sync.Mutex
 	currentBids map[common.Price][]common.Point
 	bidders     map[string]struct{}
-	peers       []string
+	roundInfo   common.AuctionRound
 }
 
 type Config struct {
@@ -51,31 +51,25 @@ func (a *Auctioneer) Start() {
 }
 
 func (a *Auctioneer) UpdatePeers() {
-	req, err := http.NewRequest("GET", "http://"+a.config.SellerIpPort+"/seller/auctioneers", nil)
+	req, err := http.NewRequest("GET", "http://"+a.config.SellerIpPort+"/seller/roundinfo", nil)
 	client := &http.Client{}
 
-	// Send the request via a client
-	// Do sends an HTTP request and
-	// returns an HTTP response
 	resp, err := client.Do(req)
 	if err != nil {
 		log.Fatal("Do: ", err)
 		return
 	}
 
-	// Callers should close resp.Body
-	// when done reading from it
-	// Defer the closing of the body
 	defer resp.Body.Close()
 
 	if err != nil {
 		log.Fatal("NewRequest: ", err)
 	}
-	var peers []string
-	if err := json.NewDecoder(resp.Body).Decode(&peers); err != nil {
+	var roundInfo common.AuctionRound
+	if err := json.NewDecoder(resp.Body).Decode(&roundInfo); err != nil {
 		log.Println(err)
 	}
-	a.peers = peers
+	a.roundInfo = roundInfo
 }
 
 // Receives bids from a bidder and returns if true if it was successfully received

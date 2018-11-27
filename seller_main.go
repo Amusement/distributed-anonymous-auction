@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"log"
 	"os"
+	"strconv"
 	"strings"
 	"time"
 )
@@ -34,7 +35,18 @@ func main() {
 	for {
 		fmt.Printf("Enter list of prices seperated by space for round %v:\n", s.Config.CurrRound+1)
 		priceRange, _ := reader.ReadString('\n')
-		s.Config.Prices = strings.Split(strings.TrimSpace(priceRange), "\n")
+		priceStrings := strings.Split(strings.TrimSpace(priceRange), "\n")
+		var prices = []uint{}
+
+		for _, i := range priceStrings {
+			j, err := strconv.ParseUint(i, 10, 32)
+			if err != nil {
+				panic(err)
+			}
+			prices = append(prices, uint(j))
+		}
+
+		s.Config.Prices = prices
 		s.Config.CurrRound += 1
 
 		fmt.Println("Waiting for current round to finish...")

@@ -1,6 +1,6 @@
 {
     "Item": "Fancy chocolate",
-    "Prices": ["300", "400", "500"],
+    "Prices": [300, 400, 500],
     "Auctioneers": ["127.0.0.1:8081", "127.0.0.1:8082"],
     "Interval": 60000000000,
     "T_Value": 2,

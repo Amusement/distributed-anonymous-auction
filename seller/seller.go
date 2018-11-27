@@ -35,7 +35,7 @@ import (
 
 type Config struct {
 	Item        string
-	Prices      []string
+	Prices      []uint
 	CurrRound   int
 	Auctioneers []string
 	StartTime   time.Time
@@ -82,6 +82,7 @@ func Initialize(configFile string) *Seller {
 }
 
 func (s *Seller) StartAuction(address string) {
+	s.router.HandleFunc("/seller/roundinfo", s.GetRoundInfo).Methods("GET")
 	s.router.HandleFunc("/seller/key", s.GetPublicKey).Methods("GET")
 	s.router.HandleFunc("/seller/Auctioneers", s.GetAuctioneers).Methods("GET")
 	s.router.HandleFunc("/seller/round", s.GetRoundNumber).Methods("GET")
@@ -174,7 +175,21 @@ func (s *Seller) GetInterval(w http.ResponseWriter, r *http.Request) {
 	w.Write(data)
 }
 
-// Seller's private function ===========
+
+func (s *Seller) GetRoundInfo(w http.ResponseWriter, r *http.Request) {
+	data, err := json.Marshal(common.AuctionRound{s.Config.StartTime,
+	s.Config.Interval,
+	s.Config.Prices,
+	s.Config.Auctioneers,
+	s.Config.CurrRound})
+	if err != nil {
+		log.Fatalf("error on GetRoundInfo: %v", err)
+	}
+
+	w.Write(data)
+}
+
+	// Seller's private function ===========
 func (s *Seller) decodeID(msg []byte) {
 	// Attempt to decode the message. If the decoded message is not in ip + price, we go to next round
 	msg, err := common.DecryptID(msg, s.privateKey)
