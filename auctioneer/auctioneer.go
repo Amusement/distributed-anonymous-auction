@@ -32,7 +32,6 @@ type AuctionRpcServer struct {
 
 func Initialize(config Config) *Auctioneer {
 	return &Auctioneer{config: config,
-		round:       0,
 		currentBids: make(map[common.Price][]common.Point),
 		bidders:     make(map[string]struct{}),
 		bidMutex:    &sync.Mutex{}}
@@ -73,21 +72,26 @@ func (a *Auctioneer) UpdateRoundInfo() {
 }
 
 // Receives bids from a bidder and returns if true if it was successfully received
-
 func (a *Auctioneer) SendBid(w http.ResponseWriter, r *http.Request) {
-	var bidPoints common.BidPoints
-	err := json.NewDecoder(r.Body).Decode(&bidPoints)
-	if err != nil {
-		fmt.Println(err)
+	status := a.roundInfo.AuctionStatus()
+	if status == common.DURING {
+
+		var bidPoints common.BidPoints
+		err := json.NewDecoder(r.Body).Decode(&bidPoints)
+		if err != nil {
+			fmt.Println(err)
+		}
+		fmt.Println("Received bid from ", bidPoints.BidderID)
+		a.bidMutex.Lock()
+		for price, points := range bidPoints.Points {
+			a.currentBids[price] = append(a.currentBids[price], points)
+		}
+		a.bidders[bidPoints.BidderID] = struct{}{}
+		a.bidMutex.Unlock()
+		w.WriteHeader(200)
+	} else {
+		w.WriteHeader(503)
 	}
-	fmt.Println("Received bid from ", bidPoints.BidderID)
-	a.bidMutex.Lock()
-	for price, points := range bidPoints.Points {
-		a.currentBids[price] = append(a.currentBids[price], points)
-	}
-	a.bidders[bidPoints.BidderID] = struct{}{}
-	a.bidMutex.Unlock()
-	w.WriteHeader(200)
 }
 
 func (a *Auctioneer) GetCompressedPoints(w http.ResponseWriter, r *http.Request) {

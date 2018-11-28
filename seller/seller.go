@@ -180,7 +180,7 @@ func (s *Seller) GetRoundInfo(w http.ResponseWriter, r *http.Request) {
 	convertedRoundInfo := common.AuctionRound{
 		s.Config.Item,
 		s.Config.StartTime,
-		s.Config.Interval.Seconds(),
+		s.Config.Interval,
 		s.Config.Prices,
 		s.Config.Auctioneers,
 		s.Config.T_value,
