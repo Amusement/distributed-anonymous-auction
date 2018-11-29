@@ -40,7 +40,7 @@ type Config struct {
 	Auctioneers []string
 	StartTime   time.Time
 	TimeLimit   int
-	Interval    time.Duration
+	Interval    common.Duration
 	T_value     int
 }
 

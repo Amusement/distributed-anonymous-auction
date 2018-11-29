@@ -2,7 +2,7 @@
     "Item": "Fancy chocolate",
     "Prices": [300, 400, 500],
     "Auctioneers": ["127.0.0.1:8081", "127.0.0.1:8082"],
-    "Interval": 60000000000,
+    "Interval": "30s",
     "T_Value": 2,
     "CurrRound": 1,
     "StartTime": "2018-11-29T16:00:00Z",

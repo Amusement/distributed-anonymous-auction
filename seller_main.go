@@ -53,7 +53,7 @@ func main() {
 		s.Config.CurrRound += 1
 
 		fmt.Println("Waiting for current round to finish...")
-		for s.Config.StartTime.Add(s.Config.Interval).After(time.Now().UTC()) {
+		for s.Config.StartTime.Add(s.Config.Interval.Duration).After(time.Now().UTC()) {
 			time.Sleep(time.Second) // Sleep and check every 1 second
 		}
 

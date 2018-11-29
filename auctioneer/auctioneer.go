@@ -9,6 +9,7 @@ import (
 	"math/big"
 	"net/http"
 	"sync"
+	"time"
 )
 
 type Auctioneer struct {
@@ -43,7 +44,7 @@ func (a *Auctioneer) Start() {
 	rtr := mux.NewRouter()
 	rtr.HandleFunc("/auctioneer/sendBid", a.SendBid).Methods("POST")
 	rtr.HandleFunc("/auctioneer/compressedPoints", a.GetCompressedPoints).Methods("GET")
-
+	go a.runAuction()
 	log.Println("Starting the auctioneer server...")
 	err := http.ListenAndServe(a.config.LocalIpPort, rtr)
 	log.Printf("Error: %v", err)
@@ -116,4 +117,44 @@ func (a *Auctioneer) calculateCompressedPoints() common.CompressedPoints {
 	fmt.Println("Price point ", compressedPoints)
 
 	return compressedPoints
+}
+
+//Meant to run a go routine
+func (a * Auctioneer) runAuction() {
+	until := time.Until(a.roundInfo.StartTime.Add(a.roundInfo.Interval.Duration))
+	fmt.Println("Waiting for ", until, " before auction")
+	time.Sleep(until)
+	var compressedPoints []common.CompressedPoints
+	for _,ipPort := range a.roundInfo.Auctioneers{
+		points, err := a.QueryCompressed(ipPort)
+		if err != nil {
+			compressedPoints = append(compressedPoints, points)
+		} else {
+			fmt.Println(err)
+		}
+	}
+	fmt.Println(compressedPoints)
+}
+
+func (a *Auctioneer) QueryCompressed(ipPort string) (common.CompressedPoints, error) {
+	fmt.Println("Getting compressed point from ", ipPort)
+	req, err := http.NewRequest("GET", "http://"+ ipPort + "/seller/compressedPoints", nil)
+	client := &http.Client{}
+	var compressedPoints common.CompressedPoints
+
+	resp, err := client.Do(req)
+	if err != nil {
+		return compressedPoints, err
+	}
+
+	defer resp.Body.Close()
+
+	if err != nil {
+		log.Fatal("NewRequest: ", err)
+	}
+	if err := json.NewDecoder(resp.Body).Decode(&compressedPoints); err != nil {
+		return compressedPoints, err
+	}
+
+	return compressedPoints, nil
 }
