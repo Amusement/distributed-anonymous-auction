@@ -80,6 +80,7 @@ func Initialize(configFile string) *Seller {
 	seller := &Seller{
 		Config:     		   config,
 		waitingForCalculation: false,
+		auctionIsOver:         false,
 		router:     		   rtr,
 		publicKey:  		   pubK,
 		privateKey: 		   privK,
@@ -91,7 +92,7 @@ func (s *Seller) checkRoundTermination() {
 	timeForEnd := time.Until(s.Config.StartTime.Add(s.Config.Interval.Duration))
 	time.Sleep(timeForEnd)
 	s.waitingForCalculation = true
-	// TODO: Receiver ids of highest price range from auctioneers
+	// TODO: Receive ids of highest price range from auctioneers
 	// TODO: Set waiting for calculation to false and determine if there will be another round or auction is over
 }
 
