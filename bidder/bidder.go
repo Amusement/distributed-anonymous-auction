@@ -8,7 +8,7 @@ import (
 	"math/big"
 	"net/http"
 	"os"
-	"P2-d3w9a-b3c0b-b3l0b-k0b9/common"
+	"../common"
 	"fmt"
 	"crypto/rsa"
 	//"bytes"
@@ -207,3 +207,4 @@ func generatePolynomial(degree int, id *big.Int) polynomial.Poly {
 	}
 	return poly
 }
+
