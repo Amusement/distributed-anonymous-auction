@@ -154,7 +154,7 @@ func (b *Bidder) sendPoints(auctioneerPricePoints map[int]map[common.Price]commo
 			break
 		}
 
-		url := auctioneer + "/auctioneer/sendBid"
+		url := "http://" + auctioneer + "/auctioneer/sendBid"
 		//req, err := http.NewRequest("POST", url, bytes.NewBuffer(bidPointsEnc))
 		client := http.DefaultClient
 		//resp, err := client.Do(req)
