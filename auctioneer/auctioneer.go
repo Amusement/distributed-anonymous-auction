@@ -120,12 +120,13 @@ func (a *Auctioneer) calculateCompressedPoints() common.CompressedPoints {
 }
 
 //Meant to run a go routine
-func (a * Auctioneer) runAuction() {
+func (a *Auctioneer) runAuction() {
 	until := time.Until(a.roundInfo.StartTime.Add(a.roundInfo.Interval.Duration))
 	fmt.Println("Waiting for ", until, " before auction")
 	time.Sleep(until)
 	var compressedPoints []common.CompressedPoints
-	for _,ipPort := range a.roundInfo.Auctioneers{
+	//TODO: Add our own compressed points?
+	for _, ipPort := range a.roundInfo.Auctioneers {
 		points, err := a.QueryCompressed(ipPort)
 		if err != nil {
 			compressedPoints = append(compressedPoints, points)
@@ -134,11 +135,14 @@ func (a * Auctioneer) runAuction() {
 		}
 	}
 	fmt.Println(compressedPoints)
+	//res := common.ComputeLagrange(compressedPoints)
+	// res is map[Price]*big.Int, a map containing lagrange interpolation of each respective price
+	// Making an assumption that T value is equal to number of auctioneers, will soon accept a T value
 }
 
 func (a *Auctioneer) QueryCompressed(ipPort string) (common.CompressedPoints, error) {
 	fmt.Println("Getting compressed point from ", ipPort)
-	req, err := http.NewRequest("GET", "http://"+ ipPort + "/seller/compressedPoints", nil)
+	req, err := http.NewRequest("GET", "http://"+ipPort+"/seller/compressedPoints", nil)
 	client := &http.Client{}
 	var compressedPoints common.CompressedPoints
 
