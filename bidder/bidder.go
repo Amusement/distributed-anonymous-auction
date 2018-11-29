@@ -11,6 +11,8 @@ import (
 	"P2-d3w9a-b3c0b-b3l0b-k0b9/common"
 	"fmt"
 	"crypto/rsa"
+	//"bytes"
+	"bytes"
 )
 
 type Bidder struct {
@@ -85,7 +87,7 @@ func (b *Bidder) ProcessBid(maxBid int) {
 		}
 	}
 
-	fmt.Println("The following random polynomials were generated:\n", polynomials)
+	//fmt.Println("The following random polynomials were generated:\n", polynomials)
 	b.samplePoints(polynomials)
 }
 
@@ -94,12 +96,12 @@ func (b *Bidder) ProcessBid(maxBid int) {
 func (b *Bidder) samplePoints(polynomials []polynomial.Poly) {
 	// example entry: 1:500:[(1,2)]
 	//				  1:700:[(1,19)]
-	auctioneerPricePoints := make(map[int]map[uint]common.Point)
+	auctioneerPricePoints := make(map[int]map[common.Price]common.Point)
 
 	for i, _ := range b.RoundInfo.Auctioneers {
 		x := i+1
 		// Initialize nested map
-		auctioneerPricePoints[x] = make(map[uint]common.Point)
+		auctioneerPricePoints[x] = make(map[common.Price]common.Point)
 		for _, price := range b.RoundInfo.Prices {
 			// Evaluate polynomial for this price at the point x
 			bigX := big.NewInt(int64(x))
@@ -112,11 +114,69 @@ func (b *Bidder) samplePoints(polynomials []polynomial.Poly) {
 				y,
 			}
 
-			auctioneerPricePoints[i+1][price] = sampledPoint
+			auctioneerPricePoints[i+1][common.Price(price)] = sampledPoint
 		}
 	}
 
-	fmt.Printf("The following points were sampled:\n%v", auctioneerPricePoints)
+	//fmt.Printf("The following points were sampled:\n%v", auctioneerPricePoints)
+	b.sendPoints(auctioneerPricePoints)
+}
+
+func (b *Bidder) sendPoints(auctioneerPricePoints map[int]map[common.Price]common.Point) {
+	failed := false
+
+	for i, auctioneer := range b.RoundInfo.Auctioneers {
+		bidPoints := common.BidPoints{
+			BidderID: b.bidderIP,			// TODO
+			Points: auctioneerPricePoints[i],
+		}
+
+		// Internal test
+		bidPointsEnc, err := common.MarshalBidPoints(bidPoints)
+		if err != nil {
+			fmt.Println("Error encoding bidPoints: ", err)
+			failed = true
+			break
+		}
+
+		var bidPointsDec common.BidPoints
+		err = common.UnmarshalBidPoints(bidPointsEnc, &bidPointsDec)
+		if err != nil {
+			fmt.Println("Error decoding bidPoints: ", err)
+			failed = true
+			break
+		}
+
+		// Rough check of equality
+		if bidPointsDec.Points[0] != bidPoints.Points[0] {
+			fmt.Println("Didn't get the same result after decoding encoded points.")
+			failed = true
+			break
+		}
+
+		url := auctioneer + "/auctioneer/sendBid"
+		//req, err := http.NewRequest("POST", url, bytes.NewBuffer(bidPointsEnc))
+		client := http.DefaultClient
+		//resp, err := client.Do(req)
+		resp, err := client.Post(url, "application/json", bytes.NewBuffer(bidPointsEnc))
+		if err != nil {
+			fmt.Printf("Unable to reach auctioneer %v\n", auctioneer)
+			failed = true
+			break
+		}
+
+		if resp.StatusCode != 200 {
+			fmt.Printf("Auctioneer %v rejected the bid.\n", auctioneer)
+			failed = true
+			break
+		}
+	}
+
+	if failed {
+		fmt.Println("One or more auctioneers was unreachable or rejected the bid.")
+	} else {
+		fmt.Println("All auctioneers accepted the bid.")
+	}
 }
 
 // Make a secretID using the given port for given price

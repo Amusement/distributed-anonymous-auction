@@ -2,6 +2,7 @@ package common
 
 import (
 	"math/big"
+	"encoding/json"
 )
 
 type Price uint
@@ -27,11 +28,20 @@ type CompressedPoints struct {
 	Points map[Price]Point
 }
 
-func (bigint BigInt) MarshalJSON() ([]byte, error) {
+func MarshalBidPoints(points BidPoints) ([]byte, error) {
+	return json.Marshal(points)
+}
+
+func UnmarshalBidPoints(bidPointsBytes []byte, points *BidPoints) error {
+	err := json.Unmarshal(bidPointsBytes, points)
+	return err
+}
+
+func (bigint BigInt) marshalBigInt() ([]byte, error) {
 	return []byte(bigint.Val.String()), nil
 }
 
-func (bigint *BigInt) UnmarshalJSON(b []byte) error {
+func (bigint *BigInt) unmarshalBigInt(b []byte) error {
 	val := string(b[:])
 
 	n := new(big.Int)
