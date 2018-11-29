@@ -25,10 +25,13 @@ import (
 	"../common"
 	"crypto/rsa"
 	"encoding/json"
+	"fmt"
 	"github.com/gorilla/mux"
 	"log"
+	"net"
 	"net/http"
 	"os"
+	"strings"
 	"time"
 )
 
@@ -45,10 +48,12 @@ type Config struct {
 }
 
 type Seller struct {
-	Config     Config
-	router     *mux.Router
-	publicKey  rsa.PublicKey
-	privateKey *rsa.PrivateKey
+	Config     			   Config
+	waitingForCalculation  bool
+	auctionIsOver          bool
+	router     			   *mux.Router
+	publicKey  			   rsa.PublicKey
+	privateKey 			   *rsa.PrivateKey
 }
 
 func Initialize(configFile string) *Seller {
@@ -73,12 +78,21 @@ func Initialize(configFile string) *Seller {
 	// Create a global seller
 	privK, pubK := common.GenerateRSA() // Generate RSA key pair
 	seller := &Seller{
-		Config:     config,
-		router:     rtr,
-		publicKey:  pubK,
-		privateKey: privK,
+		Config:     		   config,
+		waitingForCalculation: false,
+		router:     		   rtr,
+		publicKey:  		   pubK,
+		privateKey: 		   privK,
 	}
 	return seller
+}
+
+func (s *Seller) checkRoundTermination() {
+	timeForEnd := time.Until(s.Config.StartTime.Add(s.Config.Interval.Duration))
+	time.Sleep(timeForEnd)
+	s.waitingForCalculation = true
+	// TODO: Receiver ids of highest price range from auctioneers
+	// TODO: Set waiting for calculation to false and determine if there will be another round or auction is over
 }
 
 func (s *Seller) StartAuction(address string) {
@@ -93,7 +107,10 @@ func (s *Seller) StartAuction(address string) {
 	s.router.HandleFunc("/seller/time/limit", s.GetTimeLimit).Methods("GET")
 	s.router.HandleFunc("/seller/time/interval", s.GetInterval).Methods("GET")
 	// Run the REST server
-	log.Printf("Error: %v", http.ListenAndServe(address, s.router))
+	go log.Printf("Error: %v", http.ListenAndServe(address, s.router))
+	go s.checkRoundTermination()
+	// TODO remove this sleep after
+	time.Sleep(10000 * time.Second)
 }
 
 func (s *Seller) GetPublicKey(w http.ResponseWriter, r *http.Request) {
@@ -177,25 +194,41 @@ func (s *Seller) GetInterval(w http.ResponseWriter, r *http.Request) {
 
 
 func (s *Seller) GetRoundInfo(w http.ResponseWriter, r *http.Request) {
-	convertedRoundInfo := common.AuctionRound{
-		s.Config.Item,
-		s.Config.StartTime,
-		s.Config.Interval,
-		s.Config.Prices,
-		s.Config.Auctioneers,
-		s.Config.T_value,
-		s.Config.CurrRound,
-	}
+	if s.waitingForCalculation {
+		awaitingCalculation := common.AwaitingCalculationMessage{CurrentRound: s.Config.CurrRound}
+		data, err := json.Marshal(awaitingCalculation)
+		if err != nil {
+			log.Fatalf("error on GetRoundInfo: %v", err)
+		}
+		w.Write(data)
+	} else if s.auctionIsOver {
+		auctionIsover := common.AuctionIsOverMessage{Message: "Auction is over. Winner will be contacted by the seller"}
+		data, err := json.Marshal(auctionIsover)
+		if err != nil {
+			log.Fatalf("error on GetRoundInfo: %v", err)
+		}
+		w.Write(data)
+	} else {
+		convertedRoundInfo := common.AuctionRound{
+			s.Config.Item,
+			s.Config.StartTime,
+			s.Config.Interval,
+			s.Config.Prices,
+			s.Config.Auctioneers,
+			s.Config.T_value,
+			s.Config.CurrRound,
+		}
 
-	data, err := json.Marshal(convertedRoundInfo)
-	if err != nil {
-		log.Fatalf("error on GetRoundInfo: %v", err)
+		data, err := json.Marshal(convertedRoundInfo)
+		if err != nil {
+			log.Fatalf("error on GetRoundInfo: %v", err)
+		}
+		w.Write(data)
 	}
-
-	w.Write(data)
 }
 
-	// Seller's private function ===========
+// Seller's private function ===========
+
 func (s *Seller) decodeID(msg []byte) {
 	// Attempt to decode the message. If the decoded message is not in ip + price, we go to next round
 	msg, err := common.DecryptID(msg, s.privateKey)
@@ -204,4 +237,14 @@ func (s *Seller) decodeID(msg []byte) {
 		// handle error
 	}
 	log.Printf("decoded msg: %v", string(msg))
+}
+
+func (s * Seller) contactWinner(ipPortAndPrice string)  {
+	ipPort := strings.Split(ipPortAndPrice, " ")[0]
+	conn, err := net.Dial("tcp", ipPort)
+	defer conn.Close()
+	if err != nil {
+		fmt.Println("Was not able to contact winning bidder: ", err)
+	}
+	conn.Write([]byte("winner"))
 }

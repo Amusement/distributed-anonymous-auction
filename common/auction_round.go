@@ -24,6 +24,14 @@ type AuctionRound struct {
 	CurrentRound int
 }
 
+type AwaitingCalculationMessage struct {
+	CurrentRound int
+}
+
+type AuctionIsOverMessage struct {
+	Message string
+}
+
 func (a *AuctionRound) AuctionStatus() AuctionStatus {
 	if a.afterStartTime() && !a.afterEndTime() {
 		return DURING
