@@ -34,8 +34,8 @@ func (ps lagrangePoints) lagrange() *big.Int {
 		}
 		result.Add(result, Yterm)
 	}
-	//return result
-	return result.Sub(result, big.NewInt(1)) // Hack.. I am off by 1..?
+	return result
+	//return result.Sub(result, big.NewInt(1)) // Hack.. I am off by 1..?
 }
 
 //func ComputeLagrange(points []Point) *big.Int {
