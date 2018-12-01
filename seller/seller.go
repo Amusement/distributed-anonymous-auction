@@ -25,9 +25,11 @@ import (
 	"../common"
 	"crypto/rsa"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"github.com/gorilla/mux"
 	"log"
+	"math"
 	"net"
 	"net/http"
 	"os"
@@ -36,29 +38,19 @@ import (
 )
 
 // TODO: Consider moving some fields into AuctionRound type
-type Config struct {
-	Item        string
-	Prices      []uint
-	CurrRound   int
-	Auctioneers []string
-	StartTime   time.Time
-	TimeLimit   int
-	Interval    common.Duration
-	T_value     int
-}
 
 type Seller struct {
-	Config     			   Config
-	waitingForCalculation  bool
-	auctionIsOver          bool
-	router     			   *mux.Router
-	publicKey  			   rsa.PublicKey
-	privateKey 			   *rsa.PrivateKey
+	AuctionRound          common.AuctionRound
+	waitingForCalculation bool
+	auctionIsOver         bool
+	router                *mux.Router
+	publicKey             rsa.PublicKey
+	privateKey            *rsa.PrivateKey
 }
 
 func Initialize(configFile string) *Seller {
 	// Get configuration of the seller
-	var config Config
+	var auctionRound common.AuctionRound
 	file, err := os.Open(configFile)
 	defer file.Close()
 	if err != nil {
@@ -66,7 +58,7 @@ func Initialize(configFile string) *Seller {
 		os.Exit(1)
 	}
 	decoder := json.NewDecoder(file)
-	err = decoder.Decode(&config)
+	err = decoder.Decode(&auctionRound)
 	if err != nil {
 		log.Fatalf("Error decoding config file: %v", err)
 		os.Exit(1)
@@ -78,154 +70,83 @@ func Initialize(configFile string) *Seller {
 	// Create a global seller
 	privK, pubK := common.GenerateRSA() // Generate RSA key pair
 	seller := &Seller{
-		Config:     		   config,
+		AuctionRound:          auctionRound,
 		waitingForCalculation: false,
 		auctionIsOver:         false,
-		router:     		   rtr,
-		publicKey:  		   pubK,
-		privateKey: 		   privK,
+		router:                rtr,
+		publicKey:             pubK,
+		privateKey:            privK,
 	}
 	return seller
 }
 
 func (s *Seller) checkRoundTermination() {
-	timeForEnd := time.Until(s.Config.StartTime.Add(s.Config.Interval.Duration))
+	timeForEnd := time.Until(s.AuctionRound.StartTime.Add(s.AuctionRound.Interval.Duration))
 	time.Sleep(timeForEnd)
-	s.waitingForCalculation = true
+	//s.waitingForCalculation = true
 	// TODO: Receive ids of highest price range from auctioneers
 	// TODO: Set waiting for calculation to false and determine if there will be another round or auction is over
 }
 
 func (s *Seller) StartAuction(address string) {
 	s.router.HandleFunc("/seller/roundinfo", s.GetRoundInfo).Methods("GET")
-	s.router.HandleFunc("/seller/key", s.GetPublicKey).Methods("GET")
-	s.router.HandleFunc("/seller/Auctioneers", s.GetAuctioneers).Methods("GET")
-	s.router.HandleFunc("/seller/round", s.GetRoundNumber).Methods("GET")
-	s.router.HandleFunc("/seller/prices", s.GetPrices).Methods("GET")
-	s.router.HandleFunc("/seller/Item", s.GetItem).Methods("GET")
-	s.router.HandleFunc("/seller/tvalue", s.GetTValue).Methods("GET")
-	s.router.HandleFunc("/seller/time/start", s.GetStartTime).Methods("GET")
-	s.router.HandleFunc("/seller/time/limit", s.GetTimeLimit).Methods("GET")
-	s.router.HandleFunc("/seller/time/interval", s.GetInterval).Methods("GET")
 	// Run the REST server
-	go log.Printf("Error: %v", http.ListenAndServe(address, s.router))
 	go s.checkRoundTermination()
+	log.Printf("Error: %v", http.ListenAndServe(address, s.router))
 	// TODO remove this sleep after
 	time.Sleep(10000 * time.Second)
 }
 
-func (s *Seller) GetPublicKey(w http.ResponseWriter, r *http.Request) {
-	data := common.MarshalKeyToPem(s.publicKey)
-	w.Header().Set("Content-Type", "application/json; charset=UTF-8")
-	w.Write(data)
-}
-
-func (s *Seller) GetAuctioneers(w http.ResponseWriter, r *http.Request) {
-	data, err := json.Marshal(s.Config.Auctioneers)
-	if err != nil {
-		log.Fatalf("error on GetAuctioneers: %v", err)
-	}
-	w.Header().Set("Content-Type", "application/json; charset=UTF-8")
-	w.Write(data)
-}
-
-
-func (s *Seller) GetRoundNumber(w http.ResponseWriter, r *http.Request) {
-	data, err := json.Marshal(s.Config.CurrRound)
-	if err != nil {
-		log.Fatalf("error on GetRoundNumber: %v", err)
-	}
-	w.Header().Set("Content-Type", "application/json; charset=UTF-8")
-	w.Write(data)
-}
-
-func (s *Seller) GetPrices(w http.ResponseWriter, r *http.Request) {
-	data, err := json.Marshal(s.Config.Prices)
-	if err != nil {
-		log.Fatalf("error on GetPrices: %v", err)
-	}
-	w.Header().Set("Content-Type", "application/json; charset=UTF-8")
-	w.Write(data)
-}
-
-func (s *Seller) GetItem(w http.ResponseWriter, r *http.Request) {
-	data, err := json.Marshal(s.Config.Item)
-	if err != nil {
-		log.Fatalf("error on GetItem: %v", err)
-	}
-	w.Header().Set("Content-Type", "application/json; charset=UTF-8")
-	w.Write(data)
-}
-
-func (s *Seller) GetTValue(w http.ResponseWriter, r *http.Request) {
-	data, err := json.Marshal(s.Config.T_value)
-	if err != nil {
-		log.Fatalf("error on GetTvalue: %v", err)
-	}
-	w.Header().Set("Content-Type", "application/json; charset=UTF-8")
-	w.Write(data)
-}
-
-func (s *Seller) GetStartTime(w http.ResponseWriter, r *http.Request) {
-	data, err := json.Marshal(s.Config.StartTime)
-	if err != nil {
-		log.Fatalf("error on GetStartTime: %v", err)
-	}
-	w.Header().Set("Content-Type", "application/json; charset=UTF-8")
-	w.Write(data)
-}
-
-func (s *Seller) GetTimeLimit(w http.ResponseWriter, r *http.Request) {
-	data, err := json.Marshal(s.Config.TimeLimit)
-	if err != nil {
-		log.Fatalf("error on GetTimeLimit: %v", err)
-	}
-	w.Header().Set("Content-Type", "application/json; charset=UTF-8")
-	w.Write(data)
-}
-
-func (s *Seller) GetInterval(w http.ResponseWriter, r *http.Request) {
-	data, err := json.Marshal(s.Config.Interval)
-	if err != nil {
-		log.Fatalf("error on GetInterval: %v", err)
-	}
-	w.Header().Set("Content-Type", "application/json; charset=UTF-8")
-	w.Write(data)
-}
-
+//func (s *Seller) GetRoundInfo(w http.ResponseWriter, r *http.Request) {
+//	if s.waitingForCalculation {
+//		awaitingCalculation := common.AwaitingCalculationMessage{CurrentRound: s.AuctionRound.CurrentRound}
+//		data, err := json.Marshal(awaitingCalculation)
+//		if err != nil {
+//			log.Fatalf("error on GetRoundInfo: %v", err)
+//		}
+//		w.Write(data)
+//	} else if s.auctionIsOver {
+//		auctionIsover := common.AuctionIsOverMessage{Message: "Auction is over. Winner will be contacted by the seller"}
+//		data, err := json.Marshal(auctionIsover)
+//		if err != nil {
+//			log.Fatalf("error on GetRoundInfo: %v", err)
+//		}
+//		w.Write(data)
+//	} else {
+//		convertedRoundInfo := common.AuctionRound{
+//			Item: s.AuctionRound.Item,
+//			StartTime: s.AuctionRound.StartTime,
+//			Interval: s.AuctionRound.Interval,
+//			Prices: s.AuctionRound.Prices,
+//			Auctioneers: s.AuctionRound.Auctioneers,
+//			T: s.AuctionRound.T,
+//			CurrentRound: s.AuctionRound.CurrentRound,
+//		}
+//
+//		data, err := json.Marshal(convertedRoundInfo)
+//		if err != nil {
+//			log.Fatalf("error on GetRoundInfo: %v", err)
+//		}
+//		w.Write(data)
+//	}
+//}
 
 func (s *Seller) GetRoundInfo(w http.ResponseWriter, r *http.Request) {
-	if s.waitingForCalculation {
-		awaitingCalculation := common.AwaitingCalculationMessage{CurrentRound: s.Config.CurrRound}
-		data, err := json.Marshal(awaitingCalculation)
-		if err != nil {
-			log.Fatalf("error on GetRoundInfo: %v", err)
-		}
-		w.Write(data)
-	} else if s.auctionIsOver {
-		auctionIsover := common.AuctionIsOverMessage{Message: "Auction is over. Winner will be contacted by the seller"}
-		data, err := json.Marshal(auctionIsover)
-		if err != nil {
-			log.Fatalf("error on GetRoundInfo: %v", err)
-		}
-		w.Write(data)
-	} else {
-		convertedRoundInfo := common.AuctionRound{
-			s.Config.Item,
-			s.Config.StartTime,
-			s.Config.Interval,
-			s.Config.Prices,
-			s.Config.Auctioneers,
-			s.Config.T_value,
-			s.Config.CurrRound,
-		}
-
-		data, err := json.Marshal(convertedRoundInfo)
-		if err != nil {
-			log.Fatalf("error on GetRoundInfo: %v", err)
-		}
-		w.Write(data)
+	convertedRoundInfo := common.AuctionRound{
+		Item:         s.AuctionRound.Item,
+		StartTime:    s.AuctionRound.StartTime,
+		Interval:     s.AuctionRound.Interval,
+		Prices:       s.AuctionRound.Prices,
+		Auctioneers:  s.AuctionRound.Auctioneers,
+		T:            s.AuctionRound.T,
+		CurrentRound: s.AuctionRound.CurrentRound,
 	}
+
+	data, err := json.Marshal(convertedRoundInfo)
+	if err != nil {
+		log.Fatalf("error on GetRoundInfo: %v", err)
+	}
+	w.Write(data)
 }
 
 // Seller's private function ===========
@@ -240,7 +161,7 @@ func (s *Seller) decodeID(msg []byte) {
 	log.Printf("decoded msg: %v", string(msg))
 }
 
-func (s * Seller) contactWinner(ipPortAndPrice string)  {
+func (s *Seller) contactWinner(ipPortAndPrice string) {
 	ipPort := strings.Split(ipPortAndPrice, " ")[0]
 	conn, err := net.Dial("tcp", ipPort)
 	defer conn.Close()
@@ -248,4 +169,27 @@ func (s * Seller) contactWinner(ipPortAndPrice string)  {
 		fmt.Println("Was not able to contact winning bidder: ", err)
 	}
 	conn.Write([]byte("winner"))
+}
+
+func (s *Seller) CalculateNewPrices(highestBid uint) ([]uint, error) {
+	numberOfPrices := len(s.AuctionRound.Prices)
+	if numberOfPrices != 0 {
+		priceInteval := s.AuctionRound.Prices[1] - s.AuctionRound.Prices[0]
+		if s.AuctionRound.Prices[numberOfPrices-1] == highestBid {
+			var newPrices []uint
+			for i := 0; i < numberOfPrices; i++ {
+				newPrices = append(newPrices, highestBid+uint(i)*priceInteval)
+			}
+			return newPrices, nil
+		} else {
+			newPriceInterval := uint(math.Ceil(float64(priceInteval) / float64(numberOfPrices)))
+			var newPrices []uint
+			for i := 0; i < numberOfPrices; i++ {
+				newPrices = append(newPrices, uint(highestBid + uint(i)*newPriceInterval))
+			}
+			return newPrices, nil
+		}
+	} else {
+		return nil, errors.New("Seller price list is empty!")
+	}
 }
