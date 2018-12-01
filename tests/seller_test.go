@@ -1,10 +1,9 @@
 package tests
 
 import (
-	"../seller"
 	"../common"
+	"../seller"
 	"encoding/json"
-	"fmt"
 	"net/http"
 	"reflect"
 	"testing"
@@ -18,7 +17,6 @@ func TestGetConfig(t *testing.T) {
 	resp, _ := http.Get("http://localhost:8787/seller/roundinfo")
 	var auctionRound common.AuctionRound
 	json.NewDecoder(resp.Body).Decode(&auctionRound)
-	fmt.Println(resp.StatusCode)
 	if auctionRound.Item != "Fancy chocolate" {
 		t.Errorf("Item is incorrect, got: %d, want: %d.", auctionRound.Item, "Fancy chocolate")
 	}
