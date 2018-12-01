@@ -83,13 +83,15 @@ func Initialize(configFile string) *Seller {
 func (s *Seller) checkRoundTermination() {
 	timeForEnd := time.Until(s.AuctionRound.StartTime.Add(s.AuctionRound.Interval.Duration))
 	time.Sleep(timeForEnd)
-	//s.waitingForCalculation = true
+	s.waitingForCalculation = true
 	// TODO: Receive ids of highest price range from auctioneers
 	// TODO: Set waiting for calculation to false and determine if there will be another round or auction is over
 }
 
 func (s *Seller) StartAuction(address string) {
 	s.router.HandleFunc("/seller/roundinfo", s.GetRoundInfo).Methods("GET")
+	s.router.HandleFunc("/seller/auctionover", s.GetAuctionOverStatus).Methods("GET")
+	s.router.HandleFunc("/seller/waitingcalculation", s.GetWaitingCalculationStatus).Methods("GET")
 	// Run the REST server
 	go s.checkRoundTermination()
 	log.Printf("Error: %v", http.ListenAndServe(address, s.router))
@@ -97,55 +99,29 @@ func (s *Seller) StartAuction(address string) {
 	time.Sleep(10000 * time.Second)
 }
 
-//func (s *Seller) GetRoundInfo(w http.ResponseWriter, r *http.Request) {
-//	if s.waitingForCalculation {
-//		awaitingCalculation := common.AwaitingCalculationMessage{CurrentRound: s.AuctionRound.CurrentRound}
-//		data, err := json.Marshal(awaitingCalculation)
-//		if err != nil {
-//			log.Fatalf("error on GetRoundInfo: %v", err)
-//		}
-//		w.Write(data)
-//	} else if s.auctionIsOver {
-//		auctionIsover := common.AuctionIsOverMessage{Message: "Auction is over. Winner will be contacted by the seller"}
-//		data, err := json.Marshal(auctionIsover)
-//		if err != nil {
-//			log.Fatalf("error on GetRoundInfo: %v", err)
-//		}
-//		w.Write(data)
-//	} else {
-//		convertedRoundInfo := common.AuctionRound{
-//			Item: s.AuctionRound.Item,
-//			StartTime: s.AuctionRound.StartTime,
-//			Interval: s.AuctionRound.Interval,
-//			Prices: s.AuctionRound.Prices,
-//			Auctioneers: s.AuctionRound.Auctioneers,
-//			T: s.AuctionRound.T,
-//			CurrentRound: s.AuctionRound.CurrentRound,
-//		}
-//
-//		data, err := json.Marshal(convertedRoundInfo)
-//		if err != nil {
-//			log.Fatalf("error on GetRoundInfo: %v", err)
-//		}
-//		w.Write(data)
-//	}
-//}
-
 func (s *Seller) GetRoundInfo(w http.ResponseWriter, r *http.Request) {
-	convertedRoundInfo := common.AuctionRound{
-		Item:         s.AuctionRound.Item,
-		StartTime:    s.AuctionRound.StartTime,
-		Interval:     s.AuctionRound.Interval,
-		Prices:       s.AuctionRound.Prices,
-		Auctioneers:  s.AuctionRound.Auctioneers,
-		T:            s.AuctionRound.T,
-		CurrentRound: s.AuctionRound.CurrentRound,
-	}
-
-	data, err := json.Marshal(convertedRoundInfo)
+	data, err := json.Marshal(s.AuctionRound)
 	if err != nil {
 		log.Fatalf("error on GetRoundInfo: %v", err)
 	}
+	w.Write(data)
+}
+
+func (s *Seller) GetAuctionOverStatus(w http.ResponseWriter, r *http.Request) {
+	data, err := json.Marshal(s.auctionIsOver)
+	if err != nil {
+		log.Fatalf("error on GetAuctioOverStatus: %v", err)
+	}
+	w.Header().Set("Content-Type", "application/json; charset=UTF-8")
+	w.Write(data)
+}
+
+func (s *Seller) GetWaitingCalculationStatus(w http.ResponseWriter, r *http.Request) {
+	data, err := json.Marshal(s.waitingForCalculation)
+	if err != nil {
+		log.Fatalf("error on GetWaitingCalculationStatus: %v", err)
+	}
+	w.Header().Set("Content-Type", "application/json; charset=UTF-8")
 	w.Write(data)
 }
 
@@ -169,6 +145,21 @@ func (s *Seller) contactWinner(ipPortAndPrice string) {
 		fmt.Println("Was not able to contact winning bidder: ", err)
 	}
 	conn.Write([]byte("winner"))
+}
+
+func (s *Seller) calculateNewRound(highestBid uint) {
+	prices, _ := s.CalculateNewPrices(highestBid)
+	newAuctionRound := common.AuctionRound{
+		Item:         s.AuctionRound.Item,
+		StartTime:    time.Now(),
+		Interval:     s.AuctionRound.Interval,
+		Prices:       prices,
+		Auctioneers:  s.AuctionRound.Auctioneers,
+		T:            s.AuctionRound.T,
+		CurrentRound: s.AuctionRound.CurrentRound + 1,
+	}
+	s.AuctionRound = newAuctionRound
+
 }
 
 func (s *Seller) CalculateNewPrices(highestBid uint) ([]uint, error) {
