@@ -2,8 +2,8 @@
     "Item": "Fancy chocolate",
     "Prices": [300, 400, 500],
     "Auctioneers": ["127.0.0.1:8081", "127.0.0.1:8082"],
-    "Interval": "30s",
+    "Interval": "60s",
     "T": 2,
     "CurrentRound": 1,
-    "StartTime": "2018-12-01T16:00:00Z"
+    "StartTime": "2018-12-02T02:26:41Z"
 }

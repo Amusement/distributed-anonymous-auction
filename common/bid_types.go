@@ -7,7 +7,6 @@ import (
 
 type Price uint
 
-// TODO: Why does this exist? *big.Int is simple enough
 type BigInt struct {
 	Val *big.Int
 }
@@ -37,11 +36,11 @@ func UnmarshalBidPoints(bidPointsBytes []byte, points *BidPoints) error {
 	return err
 }
 
-func (bigint BigInt) marshalBigInt() ([]byte, error) {
+func (bigint BigInt) MarshalJSON() ([]byte, error) {
 	return []byte(bigint.Val.String()), nil
 }
 
-func (bigint *BigInt) unmarshalBigInt(b []byte) error {
+func (bigint *BigInt) UnmarshalJSON(b []byte) error {
 	val := string(b[:])
 
 	n := new(big.Int)
