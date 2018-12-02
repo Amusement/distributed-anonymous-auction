@@ -89,6 +89,7 @@ func (s *Seller) checkRoundTermination() {
 }
 
 func (s *Seller) StartAuction(address string) {
+	s.router.HandleFunc("/seller/key", s.GetPublicKey).Methods("GET")
 	s.router.HandleFunc("/seller/roundinfo", s.GetRoundInfo).Methods("GET")
 	s.router.HandleFunc("/seller/auctionover", s.GetAuctionOverStatus).Methods("GET")
 	s.router.HandleFunc("/seller/waitingcalculation", s.GetWaitingCalculationStatus).Methods("GET")
@@ -97,6 +98,12 @@ func (s *Seller) StartAuction(address string) {
 	log.Printf("Error: %v", http.ListenAndServe(address, s.router))
 	// TODO remove this sleep after
 	time.Sleep(10000 * time.Second)
+}
+
+func (s *Seller) GetPublicKey(w http.ResponseWriter, r *http.Request) {
+	data := common.MarshalKeyToPem(s.publicKey)
+	w.Header().Set("Content-Type", "application/json; charset=UTF-8")
+	w.Write(data)
 }
 
 func (s *Seller) GetRoundInfo(w http.ResponseWriter, r *http.Request) {
