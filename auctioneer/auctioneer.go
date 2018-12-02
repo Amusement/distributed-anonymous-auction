@@ -118,8 +118,13 @@ func (a *Auctioneer) calculateCompressedPoints() common.CompressedPoints {
 	return compressedPoints
 }
 
-//Meant to run a go routine
+//Meant to run as a go routine
 func (a *Auctioneer) runAuction() {
+	if 	a.roundInfo.AuctionStatus() == common.AFTER{
+		fmt.Println("Auction over")
+		return
+	}
+
 	until := time.Until(a.roundInfo.StartTime)
 	fmt.Println("Waiting for ", until, " before auction")
 	time.Sleep(until)
