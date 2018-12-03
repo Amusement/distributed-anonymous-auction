@@ -136,7 +136,7 @@ func TestHelloWorld(t *testing.T) {
 
 	// Step 4) Seller decrypts for each price range using its private key
 	for k, v := range res {
-		rawID, err := DecryptID(v.Bytes(), privateK)
+		rawID, err := DecryptID(v.Val.Bytes(), privateK)
 		if err != nil {
 			log.Printf("Error on decrypt: %v", err)
 			continue

@@ -2,6 +2,7 @@ package auctioneer
 
 import (
 	"../common"
+	"bytes"
 	"encoding/json"
 	"fmt"
 	"github.com/gorilla/mux"
@@ -132,8 +133,10 @@ func (a *Auctioneer) runAuction() {
 	time.Sleep(a.roundInfo.Interval.Duration)
 	fmt.Println("Collecting compressed points")
 
-	var compressedPoints []common.CompressedPoints
-	//TODO: Add our own compressed points?
+	a.bidMutex.Lock()
+	compressedPoints := []common.CompressedPoints{a.calculateCompressedPoints()}
+	a.bidMutex.Unlock()
+
 	for _, ipPort := range a.roundInfo.Auctioneers {
 		if ipPort != a.config.ExternalIpPort{
 			points, err := a.QueryCompressed(ipPort)
@@ -146,7 +149,7 @@ func (a *Auctioneer) runAuction() {
 	}
 	fmt.Println("Compressed points received", compressedPoints)
 	res := common.ComputeLagrange(compressedPoints)
-	fmt.Println(res)
+	a.SendTotalPoints(common.TotalBids{a.config.ExternalIpPort, res})
 	// res is map[Price]*big.Int, a map containing lagrange interpolation of each respective price
 	// Making an assumption that T value is equal to number of auctioneers, will soon accept a T value
 }
@@ -172,4 +175,19 @@ func (a *Auctioneer) QueryCompressed(ipPort string) (common.CompressedPoints, er
 	}
 
 	return compressedPoints, nil
+}
+
+
+func (a *Auctioneer) SendTotalPoints(bids common.TotalBids) {
+	jsonBytes, e := json.Marshal(bids)
+	if e != nil{
+		panic(e)
+	}
+	req, err := http.NewRequest("POST", "http://"+a.config.SellerIpPort+"/seller/bidpoint", bytes.NewBuffer(jsonBytes))
+	client := &http.Client{}
+
+	_, e = client.Do(req)
+	if err != nil {
+		fmt.Println(err)
+	}
 }

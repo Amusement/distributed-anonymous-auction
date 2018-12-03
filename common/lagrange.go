@@ -39,7 +39,7 @@ func (ps lagrangePoints) lagrange() *big.Int {
 }
 
 //func ComputeLagrange(points []Point) *big.Int {
-func ComputeLagrange(compressedPoints []CompressedPoints) map[Price]*big.Int {
+func ComputeLagrange(compressedPoints []CompressedPoints) map[Price]BigInt {
 	lagrangeMap := make(map[Price]lagrangePoints)
 	for _, cp := range compressedPoints {
 		for k, v := range cp.Points {
@@ -48,9 +48,9 @@ func ComputeLagrange(compressedPoints []CompressedPoints) map[Price]*big.Int {
 				Y: v.Y.Val})
 		}
 	}
-	interpolationMap := make(map[Price]*big.Int)
+	interpolationMap := make(map[Price]BigInt)
 	for k, v := range lagrangeMap {
-		interpolationMap[k] = v.lagrange()
+		interpolationMap[k] = BigInt{v.lagrange()}
 	}
 	return interpolationMap
 }

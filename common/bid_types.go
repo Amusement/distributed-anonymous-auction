@@ -27,6 +27,13 @@ type CompressedPoints struct {
 	Points map[Price]Point
 }
 
+
+type TotalBids struct {
+	AuctioneerId string
+	Points map[Price]BigInt
+}
+
+
 func MarshalBidPoints(points BidPoints) ([]byte, error) {
 	return json.Marshal(points)
 }

@@ -46,6 +46,8 @@ type Seller struct {
 	router                *mux.Router
 	publicKey             rsa.PublicKey
 	privateKey            *rsa.PrivateKey
+	// Key is Ip Port of auctioneer
+	BidPoints             map[string]map[common.Price]common.BigInt
 }
 
 func Initialize(configFile string) *Seller {
@@ -76,6 +78,7 @@ func Initialize(configFile string) *Seller {
 		router:                rtr,
 		publicKey:             pubK,
 		privateKey:            privK,
+		BidPoints: make(map[string]map[common.Price]common.BigInt),
 	}
 	return seller
 }
@@ -93,6 +96,8 @@ func (s *Seller) StartAuction(address string) {
 	s.router.HandleFunc("/seller/roundinfo", s.GetRoundInfo).Methods("GET")
 	s.router.HandleFunc("/seller/auctionover", s.GetAuctionOverStatus).Methods("GET")
 	s.router.HandleFunc("/seller/waitingcalculation", s.GetWaitingCalculationStatus).Methods("GET")
+	s.router.HandleFunc("/seller/bidpoint", s.PostBidsPoint).Methods("POST")
+
 	// Run the REST server
 	go s.checkRoundTermination()
 	log.Printf("Error: %v", http.ListenAndServe(address, s.router))
@@ -132,6 +137,19 @@ func (s *Seller) GetWaitingCalculationStatus(w http.ResponseWriter, r *http.Requ
 	w.Write(data)
 }
 
+// receives points from the auctioneers
+func (s *Seller) PostBidsPoint(w http.ResponseWriter, r *http.Request) {
+	var totalBids common.TotalBids
+	err := json.NewDecoder(r.Body).Decode(&totalBids)
+	if err != nil {
+		fmt.Println(err)
+		return
+	}
+	fmt.Println("Received bid point from ", totalBids.AuctioneerId)
+	s.BidPoints[totalBids.AuctioneerId] = totalBids.Points
+	w.WriteHeader(200)
+}
+
 // Seller's private function ===========
 
 func (s *Seller) decodeID(msg []byte) {
@@ -158,7 +176,7 @@ func (s *Seller) calculateNewRound(highestBid uint) {
 	prices, _ := s.CalculateNewPrices(highestBid)
 	newAuctionRound := common.AuctionRound{
 		Item:         s.AuctionRound.Item,
-		StartTime:    time.Now(),
+		StartTime:    time.Now().Add(time.Minute),
 		Interval:     s.AuctionRound.Interval,
 		Prices:       prices,
 		Auctioneers:  s.AuctionRound.Auctioneers,
@@ -183,7 +201,7 @@ func (s *Seller) CalculateNewPrices(highestBid uint) ([]uint, error) {
 			newPriceInterval := uint(math.Ceil(float64(priceInteval) / float64(numberOfPrices)))
 			var newPrices []uint
 			for i := 0; i < numberOfPrices; i++ {
-				newPrices = append(newPrices, uint(highestBid + uint(i)*newPriceInterval))
+				newPrices = append(newPrices, uint(highestBid+uint(i)*newPriceInterval))
 			}
 			return newPrices, nil
 		}
