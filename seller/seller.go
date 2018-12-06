@@ -83,10 +83,21 @@ func Initialize(configFile string) *Seller {
 	return seller
 }
 
+
 func (s *Seller) checkRoundTermination() {
-	timeForEnd := time.Until(s.AuctionRound.StartTime.Add(s.AuctionRound.Interval.Duration))
-	time.Sleep(timeForEnd)
-	s.waitingForCalculation = true
+	for{
+		timeForEnd := time.Until(s.AuctionRound.StartTime.Add(s.AuctionRound.Interval.Duration))
+		time.Sleep(timeForEnd)
+		s.waitingForCalculation = true
+		time.Sleep(s.AuctionRound.Interval.Duration)
+		s.waitingForCalculation = false
+		round := s.AuctionRound
+		round.CurrentRound += 1
+		round.StartTime = time.Now().Add(1*time.Minute)
+		s.AuctionRound = round
+	}
+
+
 	// TODO: Receive ids of highest price range from auctioneers
 	// TODO: Set waiting for calculation to false and determine if there will be another round or auction is over
 }

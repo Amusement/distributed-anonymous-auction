@@ -121,6 +121,26 @@ func (a *Auctioneer) calculateCompressedPoints() common.CompressedPoints {
 
 //Meant to run as a go routine
 func (a *Auctioneer) runAuction() {
+	round := 0
+	for {
+		for {
+			a.UpdateRoundInfo()
+			if a.roundInfo.CurrentRound > round{
+				round = a.roundInfo.CurrentRound
+				break
+			} else if a.roundInfo.CurrentRound == -1 {
+				fmt.Println("Auction over")
+				return
+			} else {
+				a.runAuctionRound()
+			}
+			// some backoff for querying
+			time.Sleep(time.Second)
+		}
+	}
+}
+
+func (a *Auctioneer) runAuctionRound()  {
 	if 	a.roundInfo.AuctionStatus() == common.AFTER{
 		fmt.Println("Auction over")
 		return
