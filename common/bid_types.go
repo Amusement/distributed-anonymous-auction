@@ -27,6 +27,9 @@ type CompressedPoints struct {
 	Points map[Price]Point
 }
 
+type WinnerNotification struct {
+	WinningPrice uint
+}
 
 type TotalBids struct {
 	AuctioneerId string

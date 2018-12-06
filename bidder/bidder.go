@@ -3,6 +3,7 @@ package bidder
 import (
 	"encoding/json"
 	"github.com/jongukim/polynomial"
+	"github.com/phayes/freeport"
 	"io/ioutil"
 	"log"
 	"math/big"
@@ -13,6 +14,7 @@ import (
 	"crypto/rsa"
 	//"bytes"
 	"bytes"
+	"net"
 )
 
 type Bidder struct {
@@ -32,6 +34,42 @@ func InitBidder(sellerAddr string, bidderIP string) *Bidder {
 	b.learnAuctionRound()
 	//log.Printf("Bidder initialized to: %v", b)
 	return b
+}
+
+// Listens for seller communications
+// Local IP:port?
+func (b *Bidder) listenSeller() {
+	listener, err := net.Listen("tcp", b.sellerIP)
+	if err != nil {
+		log.Fatalf("Unable to listen for seller communications: ", )
+	}
+	defer listener.Close()
+	log.Printf("\n")
+
+	for {
+		conn, err := listener.Accept()
+		if err != nil {
+			log.Printf(err.Error())
+			continue
+		}
+		buf := make([]byte, 100000)			// Whence this number?
+		reqLen, err := conn.Read(buf)
+		if err != nil {
+			log.Printf(err.Error())
+			continue
+		}
+
+		var winnerNotif common.WinnerNotification
+		err = json.Unmarshal(buf[:reqLen], &winnerNotif)
+		if err != nil {
+			log.Printf("\n")
+			continue
+		}
+
+		// This bidder has won
+		log.Printf("You've won the auction at bid price %v!\n", winnerNotif.WinningPrice)
+		os.Exit(0)
+	}
 }
 
 // Directly learn the auction round configuration from the seller along with public key
@@ -74,13 +112,16 @@ func (b *Bidder) ProcessBid(maxBid int) {
 	maxBidU := uint(maxBid)
 
 	// Choose a port, TODO: make port part of Bidder struct? Accessed frequently
-	chosenPort := 4331
-	fmt.Println("Chose port: ", chosenPort)
+	port, err := freeport.GetFreePort()
+	if err != nil {
+		log.Fatalf("Unable to find free port to use: ", port)
+	}
+	fmt.Println("Chose port: ", port)
 
 	var polynomials []polynomial.Poly
 	for _, price := range b.RoundInfo.Prices {
 		if price <= maxBidU {
-			id := b.selfIdentify(chosenPort, price)
+			id := b.selfIdentify(port, price)
 			polynomials = append(polynomials, generatePolynomial(b.RoundInfo.T, id))
 		} else {
 			polynomials = append(polynomials, generatePolynomial(b.RoundInfo.T, nil))
