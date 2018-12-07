@@ -10,9 +10,9 @@ import (
 	"crypto/sha256"
 	"encoding/asn1"
 	"encoding/pem"
-	"log"
 	"errors"
 	"fmt"
+	"log"
 )
 
 // Create RSA key pair in PEM format - used by seller only

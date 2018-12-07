@@ -1,8 +1,8 @@
 package common
 
 import (
-	"math/big"
 	"encoding/json"
+	"math/big"
 )
 
 type Price uint
@@ -23,6 +23,10 @@ type BidPoints struct {
 	Points   map[Price]Point
 }
 
+type ListCompressedPoints struct {
+	ListPoints []CompressedPoints
+}
+
 type CompressedPoints struct {
 	Points map[Price]Point
 }
@@ -33,9 +37,8 @@ type WinnerNotification struct {
 
 type TotalBids struct {
 	AuctioneerId string
-	Points map[Price]BigInt
+	Points       ListCompressedPoints
 }
-
 
 func MarshalBidPoints(points BidPoints) ([]byte, error) {
 	return json.Marshal(points)

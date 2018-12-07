@@ -1,7 +1,10 @@
 package bidder
 
 import (
+	"../common"
+	"crypto/rsa"
 	"encoding/json"
+	"fmt"
 	"github.com/jongukim/polynomial"
 	"github.com/phayes/freeport"
 	"io/ioutil"
@@ -9,21 +12,18 @@ import (
 	"math/big"
 	"net/http"
 	"os"
-	"../common"
-	"fmt"
-	"crypto/rsa"
 	//"bytes"
 	"bytes"
 	"net"
 )
 
 type Bidder struct {
-	RoundInfo		common.AuctionRound			// Initially retrieved round info.
+	RoundInfo common.AuctionRound // Initially retrieved round info.
 
 	secretID        int
 	sellerPublicKey *rsa.PublicKey
 	sellerIP        string
-	bidderIP string
+	bidderIP        string
 }
 
 func InitBidder(sellerAddr string, bidderIP string) *Bidder {
@@ -41,7 +41,7 @@ func InitBidder(sellerAddr string, bidderIP string) *Bidder {
 func (b *Bidder) listenSeller() {
 	listener, err := net.Listen("tcp", b.sellerIP)
 	if err != nil {
-		log.Fatalf("Unable to listen for seller communications: ", )
+		log.Fatalf("Unable to listen for seller communications: ")
 	}
 	defer listener.Close()
 	log.Printf("\n")
@@ -52,7 +52,7 @@ func (b *Bidder) listenSeller() {
 			log.Printf(err.Error())
 			continue
 		}
-		buf := make([]byte, 100000)			// Whence this number?
+		buf := make([]byte, 100000) // Whence this number?
 		reqLen, err := conn.Read(buf)
 		if err != nil {
 			log.Printf(err.Error())
@@ -140,14 +140,14 @@ func (b *Bidder) samplePoints(polynomials []polynomial.Poly) {
 	auctioneerPricePoints := make(map[int]map[common.Price]common.Point)
 
 	for i, _ := range b.RoundInfo.Auctioneers {
-		x := i+1
+		x := i + 1
 		// Initialize nested map
 		auctioneerPricePoints[x] = make(map[common.Price]common.Point)
-		for _, price := range b.RoundInfo.Prices {
+		for polyIndex, price := range b.RoundInfo.Prices {
 			// Evaluate polynomial for this price at the point x
 			bigX := big.NewInt(int64(x))
 			y := common.BigInt{
-				polynomials[i].Eval(bigX, nil),
+				polynomials[polyIndex].Eval(bigX, nil),
 			}
 
 			sampledPoint := common.Point{
@@ -155,11 +155,11 @@ func (b *Bidder) samplePoints(polynomials []polynomial.Poly) {
 				y,
 			}
 
-			auctioneerPricePoints[i+1][common.Price(price)] = sampledPoint
+			auctioneerPricePoints[x][common.Price(price)] = sampledPoint
 		}
 	}
 
-	//fmt.Printf("The following points were sampled:\n%v", auctioneerPricePoints)
+	fmt.Printf("The following points were sampled:\n%v", auctioneerPricePoints)
 	b.sendPoints(auctioneerPricePoints)
 }
 
@@ -168,8 +168,8 @@ func (b *Bidder) sendPoints(auctioneerPricePoints map[int]map[common.Price]commo
 
 	for i, auctioneer := range b.RoundInfo.Auctioneers {
 		bidPoints := common.BidPoints{
-			BidderID: b.bidderIP,			// TODO
-			Points: auctioneerPricePoints[i],
+			BidderID: b.bidderIP, // TODO
+			Points:   auctioneerPricePoints[i+1],
 		}
 
 		// Internal test
@@ -248,4 +248,3 @@ func generatePolynomial(degree int, id *big.Int) polynomial.Poly {
 	}
 	return poly
 }
-

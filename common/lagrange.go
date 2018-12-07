@@ -39,9 +39,9 @@ func (ps lagrangePoints) lagrange() *big.Int {
 }
 
 //func ComputeLagrange(points []Point) *big.Int {
-func ComputeLagrange(compressedPoints []CompressedPoints) map[Price]BigInt {
+func ComputeLagrange(compressedPoints ListCompressedPoints) map[Price]BigInt {
 	lagrangeMap := make(map[Price]lagrangePoints)
-	for _, cp := range compressedPoints {
+	for _, cp := range compressedPoints.ListPoints {
 		for k, v := range cp.Points {
 			lagrangeMap[k] = append(lagrangeMap[k], lagrangePoint{
 				X: big.NewInt(int64(v.X)),

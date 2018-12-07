@@ -47,7 +47,7 @@ type Seller struct {
 	publicKey             rsa.PublicKey
 	privateKey            *rsa.PrivateKey
 	// Key is Ip Port of auctioneer
-	BidPoints             map[string]map[common.Price]common.BigInt
+	BidPoints map[string]map[common.Price]common.BigInt
 }
 
 func Initialize(configFile string) *Seller {
@@ -66,6 +66,12 @@ func Initialize(configFile string) *Seller {
 		os.Exit(1)
 	}
 
+	// Some simple validations
+	if auctionRound.T >= len(auctionRound.Auctioneers) {
+		log.Fatalf("config file error: T value should be lower than length of auctioneers")
+		os.Exit(1)
+	}
+
 	// Create a new router
 	rtr := mux.NewRouter()
 
@@ -78,25 +84,39 @@ func Initialize(configFile string) *Seller {
 		router:                rtr,
 		publicKey:             pubK,
 		privateKey:            privK,
-		BidPoints: make(map[string]map[common.Price]common.BigInt),
+		BidPoints:             make(map[string]map[common.Price]common.BigInt),
 	}
 	return seller
 }
 
-
 func (s *Seller) checkRoundTermination() {
-	for{
+	for {
+		// Waiting for bidding round to end
 		timeForEnd := time.Until(s.AuctionRound.StartTime.Add(s.AuctionRound.Interval.Duration))
 		time.Sleep(timeForEnd)
 		s.waitingForCalculation = true
+
+		// Waiting for calculating round to end
 		time.Sleep(s.AuctionRound.Interval.Duration)
 		s.waitingForCalculation = false
+
+		// Calculate for a winner
+		if len(s.BidPoints) < len(s.AuctionRound.Auctioneers)/2 {
+			// TODO If we did not hear back from majority of auctioneers, we fail
+		}
+		for auctioneerID, priceMap := range s.BidPoints {
+			for price, encryptedID := range priceMap {
+				res := s.decodeID(encryptedID.Val.Bytes())
+				fmt.Printf("from Auctioneer: %v price %v: Decoded result: %v\n", auctioneerID, price, res)
+				// TODO we can now decode, keep trak of majority?
+			}
+		}
+
 		round := s.AuctionRound
 		round.CurrentRound += 1
-		round.StartTime = time.Now().Add(1*time.Minute)
+		round.StartTime = time.Now().Add(1 * time.Minute)
 		s.AuctionRound = round
 	}
-
 
 	// TODO: Receive ids of highest price range from auctioneers
 	// TODO: Set waiting for calculation to false and determine if there will be another round or auction is over
@@ -156,21 +176,22 @@ func (s *Seller) PostBidsPoint(w http.ResponseWriter, r *http.Request) {
 		fmt.Println(err)
 		return
 	}
-	fmt.Println("Received bid point from ", totalBids.AuctioneerId)
-	s.BidPoints[totalBids.AuctioneerId] = totalBids.Points
+	s.BidPoints[totalBids.AuctioneerId] = common.ComputeLagrange(totalBids.Points)
 	w.WriteHeader(200)
 }
 
 // Seller's private function ===========
 
-func (s *Seller) decodeID(msg []byte) {
-	// Attempt to decode the message. If the decoded message is not in ip + price, we go to next round
-	msg, err := common.DecryptID(msg, s.privateKey)
-	if err != nil {
-		log.Fatalf("Error decrypting message: %v", err)
-		// handle error
+func (s *Seller) decodeID(msg []byte) string {
+	if msg == nil {
+		return "No Bid"
 	}
-	log.Printf("decoded msg: %v", string(msg))
+	// Attempt to decode the message.
+	rawMsg, err := common.DecryptID(msg, s.privateKey)
+	if err != nil {
+		return "Multiple Winners"
+	}
+	return string(rawMsg)
 }
 
 func (s *Seller) contactWinner(ipPortAndPrice string) {

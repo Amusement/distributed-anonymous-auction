@@ -106,7 +106,7 @@ func (a *Auctioneer) GetCompressedPoints(w http.ResponseWriter, r *http.Request)
 }
 
 func (a *Auctioneer) calculateCompressedPoints() common.CompressedPoints {
-	compressedPoints := common.CompressedPoints{make( map[common.Price]common.Point)}
+	compressedPoints := common.CompressedPoints{make(map[common.Price]common.Point)}
 	for key, points := range a.currentBids {
 		var sum big.Int
 		for _, p := range points {
@@ -125,7 +125,7 @@ func (a *Auctioneer) runAuction() {
 	for {
 		for {
 			a.UpdateRoundInfo()
-			if a.roundInfo.CurrentRound > round{
+			if a.roundInfo.CurrentRound > round {
 				round = a.roundInfo.CurrentRound
 				break
 			} else if a.roundInfo.CurrentRound == -1 {
@@ -140,8 +140,8 @@ func (a *Auctioneer) runAuction() {
 	}
 }
 
-func (a *Auctioneer) runAuctionRound()  {
-	if 	a.roundInfo.AuctionStatus() == common.AFTER{
+func (a *Auctioneer) runAuctionRound() {
+	if a.roundInfo.AuctionStatus() == common.AFTER {
 		fmt.Println("Auction over")
 		return
 	}
@@ -158,7 +158,7 @@ func (a *Auctioneer) runAuctionRound()  {
 	a.bidMutex.Unlock()
 
 	for _, ipPort := range a.roundInfo.Auctioneers {
-		if ipPort != a.config.ExternalIpPort{
+		if ipPort != a.config.ExternalIpPort {
 			points, err := a.QueryCompressed(ipPort)
 			if err == nil {
 				compressedPoints = append(compressedPoints, points)
@@ -167,11 +167,9 @@ func (a *Auctioneer) runAuctionRound()  {
 			}
 		}
 	}
-	fmt.Println("Compressed points received", compressedPoints)
-	res := common.ComputeLagrange(compressedPoints)
-	a.SendTotalPoints(common.TotalBids{a.config.ExternalIpPort, res})
-	// res is map[Price]*big.Int, a map containing lagrange interpolation of each respective price
-	// Making an assumption that T value is equal to number of auctioneers, will soon accept a T value
+
+	//fmt.Println("Compressed points received", compressedPoints)
+	a.SendTotalPoints(common.TotalBids{a.config.ExternalIpPort, common.ListCompressedPoints{compressedPoints}})
 }
 
 func (a *Auctioneer) QueryCompressed(ipPort string) (common.CompressedPoints, error) {
@@ -197,10 +195,9 @@ func (a *Auctioneer) QueryCompressed(ipPort string) (common.CompressedPoints, er
 	return compressedPoints, nil
 }
 
-
 func (a *Auctioneer) SendTotalPoints(bids common.TotalBids) {
 	jsonBytes, e := json.Marshal(bids)
-	if e != nil{
+	if e != nil {
 		panic(e)
 	}
 	req, err := http.NewRequest("POST", "http://"+a.config.SellerIpPort+"/seller/bidpoint", bytes.NewBuffer(jsonBytes))
