@@ -156,7 +156,7 @@ func (s *Seller) PostBidsPoint(w http.ResponseWriter, r *http.Request) {
 // Seller's private function ===========
 
 func (s *Seller) decodeID(msg []byte) string {
-	if msg == nil {
+	if len(msg) == 0 {
 		return "No Bid"
 	}
 	// Attempt to decode the message.
