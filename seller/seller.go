@@ -41,8 +41,6 @@ import (
 
 type Seller struct {
 	AuctionRound          common.AuctionRound
-	waitingForCalculation bool
-	auctionIsOver         bool
 	router                *mux.Router
 	publicKey             rsa.PublicKey
 	privateKey            *rsa.PrivateKey
@@ -79,8 +77,6 @@ func Initialize(configFile string) *Seller {
 	privK, pubK := common.GenerateRSA() // Generate RSA key pair
 	seller := &Seller{
 		AuctionRound:          auctionRound,
-		waitingForCalculation: false,
-		auctionIsOver:         false,
 		router:                rtr,
 		publicKey:             pubK,
 		privateKey:            privK,
@@ -94,11 +90,9 @@ func (s *Seller) checkRoundTermination() {
 		// Waiting for bidding round to end
 		timeForEnd := time.Until(s.AuctionRound.StartTime.Add(s.AuctionRound.Interval.Duration))
 		time.Sleep(timeForEnd)
-		s.waitingForCalculation = true
 
 		// Waiting for calculating round to end
 		time.Sleep(s.AuctionRound.Interval.Duration)
-		s.waitingForCalculation = false
 
 		// Calculate for a winner
 		if len(s.BidPoints) < len(s.AuctionRound.Auctioneers)/2 {
@@ -111,7 +105,6 @@ func (s *Seller) checkRoundTermination() {
 				// TODO we can now decode, keep trak of majority?
 			}
 		}
-
 		round := s.AuctionRound
 		round.CurrentRound += 1
 		round.StartTime = time.Now().Add(1 * time.Minute)
@@ -125,8 +118,6 @@ func (s *Seller) checkRoundTermination() {
 func (s *Seller) StartAuction(address string) {
 	s.router.HandleFunc("/seller/key", s.GetPublicKey).Methods("GET")
 	s.router.HandleFunc("/seller/roundinfo", s.GetRoundInfo).Methods("GET")
-	s.router.HandleFunc("/seller/auctionover", s.GetAuctionOverStatus).Methods("GET")
-	s.router.HandleFunc("/seller/waitingcalculation", s.GetWaitingCalculationStatus).Methods("GET")
 	s.router.HandleFunc("/seller/bidpoint", s.PostBidsPoint).Methods("POST")
 
 	// Run the REST server
@@ -147,24 +138,6 @@ func (s *Seller) GetRoundInfo(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		log.Fatalf("error on GetRoundInfo: %v", err)
 	}
-	w.Write(data)
-}
-
-func (s *Seller) GetAuctionOverStatus(w http.ResponseWriter, r *http.Request) {
-	data, err := json.Marshal(s.auctionIsOver)
-	if err != nil {
-		log.Fatalf("error on GetAuctioOverStatus: %v", err)
-	}
-	w.Header().Set("Content-Type", "application/json; charset=UTF-8")
-	w.Write(data)
-}
-
-func (s *Seller) GetWaitingCalculationStatus(w http.ResponseWriter, r *http.Request) {
-	data, err := json.Marshal(s.waitingForCalculation)
-	if err != nil {
-		log.Fatalf("error on GetWaitingCalculationStatus: %v", err)
-	}
-	w.Header().Set("Content-Type", "application/json; charset=UTF-8")
 	w.Write(data)
 }
 

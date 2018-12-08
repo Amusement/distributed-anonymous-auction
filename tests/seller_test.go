@@ -42,30 +42,6 @@ func TestGetConfig(t *testing.T) {
 
 }
 
-func TestGetAuctionOverStatus(t *testing.T) {
-	s := seller.Initialize("../tests/test_config.json")
-	go s.StartAuction("127.0.0.1:8888")
-	time.Sleep(1 * time.Second)
-	resp, _ := http.Get("http://localhost:8888/seller/auctionover")
-	var auctionOverStatus bool
-	json.NewDecoder(resp.Body).Decode(&auctionOverStatus)
-	if auctionOverStatus != false {
-		t.Errorf("Item is incorrect, got: %d, want: %d.", auctionOverStatus, false)
-	}
-}
-
-func TestGetCalculationStatus(t *testing.T) {
-	s := seller.Initialize("../tests/test_config.json")
-	go s.StartAuction("127.0.0.1:8989")
-	time.Sleep(1 * time.Second)
-	resp, _ := http.Get("http://localhost:8989/seller/waitingcalculation")
-	var waitingForCalculationStatus bool
-	json.NewDecoder(resp.Body).Decode(&waitingForCalculationStatus)
-	if waitingForCalculationStatus != false {
-		t.Errorf("Item is incorrect, got: %d, want: %d.", waitingForCalculationStatus, false)
-	}
-}
-
 func TestNewPrices(t *testing.T) {
 	s := seller.Initialize("test_config.json")
 	newPrices, _ := s.CalculateNewPrices(400)

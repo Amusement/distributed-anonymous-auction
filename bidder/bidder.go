@@ -75,7 +75,7 @@ func (b *Bidder) listenSeller() {
 // Directly learn the auction round configuration from the seller along with public key
 func (b *Bidder) learnAuctionRound() {
 	// Get seller's public key
-	uri := b.sellerIP + "/seller/key"
+	uri := "http://" + b.sellerIP + "/seller/key"
 	response, err := http.Get(uri)
 	if err != nil {
 		log.Fatalf("Failed to get public key from seller: %v", err)
@@ -90,7 +90,7 @@ func (b *Bidder) learnAuctionRound() {
 	b.sellerPublicKey = key
 
 	// Get auction round info
-	url := b.sellerIP + "/seller/roundinfo"
+	url := "http://" + b.sellerIP + "/seller/roundinfo"
 	response, err = http.Get(url)
 	if err != nil {
 		log.Fatalf("Failed to get round information from seller: %v", err)
@@ -158,8 +158,6 @@ func (b *Bidder) samplePoints(polynomials []polynomial.Poly) {
 			auctioneerPricePoints[x][common.Price(price)] = sampledPoint
 		}
 	}
-
-	fmt.Printf("The following points were sampled:\n%v", auctioneerPricePoints)
 	b.sendPoints(auctioneerPricePoints)
 }
 
