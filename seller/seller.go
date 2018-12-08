@@ -73,6 +73,8 @@ func Initialize(configFile string) *Seller {
 		os.Exit(1)
 	}
 
+	auctionRound.CurrentRound = 1
+
 	// Create a new router
 	rtr := mux.NewRouter()
 
@@ -95,7 +97,7 @@ func (s *Seller) checkRoundTermination() {
 		time.Sleep(timeForEnd)
 		fmt.Println("Round is over. Waiting for lagrange calculation and all that stuff.")
 		// Waiting for calculating round to end
-		time.Sleep(5 * time.Second)
+		time.Sleep(s.AuctionRound.Interval.Duration/common.IntervalMultiple)
 
 		// Calculate for a winner
 		if len(s.BidPoints) < s.AuctionRound.T {
@@ -203,7 +205,7 @@ func (s *Seller) calculateNewRound(highestBid uint) {
 	prices, _ := s.CalculateNewPrices(highestBid)
 	newAuctionRound := common.AuctionRound{
 		Item:         s.AuctionRound.Item,
-		StartTime:    time.Now().Add(time.Second),
+		StartTime:    time.Now().Add(s.AuctionRound.Interval.Duration),
 		Interval:     s.AuctionRound.Interval,
 		Prices:       prices,
 		Auctioneers:  s.AuctionRound.Auctioneers,
@@ -217,15 +219,15 @@ func (s *Seller) calculateNewRound(highestBid uint) {
 func (s *Seller) CalculateNewPrices(highestBid uint) ([]uint, error) {
 	numberOfPrices := len(s.AuctionRound.Prices)
 	if numberOfPrices != 0 {
-		priceInteval := s.AuctionRound.Prices[1] - s.AuctionRound.Prices[0]
+		priceInterval := s.AuctionRound.Prices[1] - s.AuctionRound.Prices[0]
 		if s.AuctionRound.Prices[numberOfPrices-1] == highestBid {
 			var newPrices []uint
 			for i := 0; i < numberOfPrices; i++ {
-				newPrices = append(newPrices, highestBid+uint(i)*priceInteval)
+				newPrices = append(newPrices, highestBid+uint(i)*priceInterval)
 			}
 			return newPrices, nil
 		} else {
-			newPriceInterval := uint(math.Ceil(float64(priceInteval) / float64(numberOfPrices)))
+			newPriceInterval := uint(math.Ceil(float64(priceInterval) / float64(numberOfPrices)))
 			var newPrices []uint
 			for i := 0; i < numberOfPrices; i++ {
 				newPrices = append(newPrices, uint(highestBid+uint(i)*newPriceInterval))

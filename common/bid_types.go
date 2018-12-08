@@ -5,6 +5,9 @@ import (
 	"math/big"
 )
 
+// this is the amount the interval is diveded by for the information exhange peroid
+const IntervalMultiple  = 2
+
 type Price uint
 
 type BigInt struct {

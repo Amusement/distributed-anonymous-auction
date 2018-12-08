@@ -18,7 +18,6 @@ type Auctioneer struct {
 	round       uint
 	bidMutex    *sync.Mutex
 	currentBids map[common.Price][]common.Point
-	bidders     map[string]struct{}
 	roundInfo   common.AuctionRound
 }
 
@@ -35,7 +34,6 @@ type AuctionRpcServer struct {
 func Initialize(config Config) *Auctioneer {
 	return &Auctioneer{config: config,
 		currentBids: make(map[common.Price][]common.Point),
-		bidders:     make(map[string]struct{}),
 		bidMutex:    &sync.Mutex{}}
 }
 
@@ -92,7 +90,6 @@ func (a *Auctioneer) SendBid(w http.ResponseWriter, r *http.Request) {
 		for price, points := range bidPoints.Points {
 			a.currentBids[price] = append(a.currentBids[price], points)
 		}
-		a.bidders[bidPoints.BidderID] = struct{}{}
 		a.bidMutex.Unlock()
 		w.WriteHeader(200)
 	} else {
@@ -174,6 +171,7 @@ func (a *Auctioneer) runAuctionRound() {
 
 	//fmt.Println("Compressed points received", compressedPoints)
 	a.SendTotalPoints(common.TotalBids{a.config.ExternalIpPort, common.ListCompressedPoints{compressedPoints}})
+	time.Sleep(time.Until(a.roundInfo.StartTime.Add(a.roundInfo.Interval.Duration).Add(a.roundInfo.Interval.Duration/common.IntervalMultiple)))
 }
 
 func (a *Auctioneer) QueryCompressed(ipPort string) (common.CompressedPoints, error) {
