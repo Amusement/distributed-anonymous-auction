@@ -102,17 +102,19 @@ func (s *Seller) checkRoundTermination() {
 			fmt.Println("We lost more than T auctioneers :(")
 		}
 		for _, priceMap := range s.BidPoints {
+			isDone := false
 			for i := len(priceMap) - 1; i >= 0; i-- {
+				fmt.Println(len(priceMap))
+				fmt.Println(i)
 				price := common.Price(s.AuctionRound.Prices[i])
 				encryptedID := priceMap[price]
 				res := s.decodeID(encryptedID.Val.Bytes())
-				fmt.Println(price)
-				fmt.Println(res)
 				if res == NOBID {
 					fmt.Println("There are no bids for price: ", price)
 				} else if res == MULTIPLEWINNERS {
 					fmt.Println("There are multiple winners for price: ", price)
 					s.calculateNewRound(uint(price))
+					isDone = true
 					break
 				} else {
 					fmt.Println("Got a winner: ", res)
@@ -121,6 +123,9 @@ func (s *Seller) checkRoundTermination() {
 					time.Sleep(5 * time.Second)
 					return
 				}
+			}
+			if isDone == true {
+				break
 			}
 		}
 	}
