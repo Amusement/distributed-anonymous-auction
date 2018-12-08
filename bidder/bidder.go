@@ -12,6 +12,8 @@ import (
 	"math/big"
 	"net/http"
 	"os"
+	"strconv"
+
 	//"bytes"
 	"bytes"
 	"net"
@@ -24,6 +26,7 @@ type Bidder struct {
 	sellerPublicKey *rsa.PublicKey
 	sellerIP        string
 	bidderIP        string
+	bidderPort      int
 }
 
 func InitBidder(sellerAddr string, bidderIP string) *Bidder {
@@ -38,10 +41,10 @@ func InitBidder(sellerAddr string, bidderIP string) *Bidder {
 
 // Listens for seller communications
 // Local IP:port?
-func (b *Bidder) listenSeller() {
-	listener, err := net.Listen("tcp", b.sellerIP)
+func (b *Bidder) ListenSeller() {
+	listener, err := net.Listen("tcp", b.bidderIP + ":" + strconv.Itoa(b.bidderPort))
 	if err != nil {
-		log.Fatalf("Unable to listen for seller communications: ")
+		log.Fatalf("Unable to listen for seller communications: ", err)
 	}
 	defer listener.Close()
 	log.Printf("\n")
@@ -62,7 +65,7 @@ func (b *Bidder) listenSeller() {
 		var winnerNotif common.WinnerNotification
 		err = json.Unmarshal(buf[:reqLen], &winnerNotif)
 		if err != nil {
-			log.Printf("\n")
+			log.Printf(err.Error())
 			continue
 		}
 
@@ -113,6 +116,7 @@ func (b *Bidder) ProcessBid(maxBid int) {
 
 	// Choose a port, TODO: make port part of Bidder struct? Accessed frequently
 	port, err := freeport.GetFreePort()
+	b.bidderPort = port
 	if err != nil {
 		log.Fatalf("Unable to find free port to use: ", port)
 	}

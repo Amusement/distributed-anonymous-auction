@@ -32,7 +32,7 @@ type CompressedPoints struct {
 }
 
 type WinnerNotification struct {
-	WinningPrice uint
+	WinningPrice Price
 }
 
 type TotalBids struct {

@@ -43,6 +43,6 @@ func main() {
 		fmt.Println("Your bid was not understood: ", err)
 		os.Exit(1)
 	}
-
 	bidder.ProcessBid(maxBid)
+	bidder.ListenSeller()
 }

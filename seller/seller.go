@@ -104,15 +104,15 @@ func (s *Seller) checkRoundTermination() {
 		for _, priceMap := range s.BidPoints {
 			for price, encryptedID := range priceMap {
 				res := s.decodeID(encryptedID.Val.Bytes())
-				fmt.Println(price)
 				if res == NOBID {
 					fmt.Println("There are no bids for price: ", price)
 				} else if res == MULTIPLEWINNERS {
 					fmt.Println("There are multiple winners for price: ", price)
 					s.calculateNewRound(uint(price))
 				} else {
-					fmt.Println("Got a winner for price ", price, ": ", res)
+					fmt.Println("Got a winner: ", res)
 					s.AuctionRound.CurrentRound = -1
+					s.contactWinner(res, price)
 					time.Sleep(5 * time.Second)
 					// TODO Contact Winner
 					return
@@ -174,14 +174,21 @@ func (s *Seller) decodeID(msg []byte) string {
 	return string(rawMsg)
 }
 
-func (s *Seller) contactWinner(ipPortAndPrice string) {
+func (s *Seller) contactWinner(ipPortAndPrice string, price common.Price) {
 	ipPort := strings.Split(ipPortAndPrice, " ")[0]
 	conn, err := net.Dial("tcp", ipPort)
 	defer conn.Close()
 	if err != nil {
 		fmt.Println("Was not able to contact winning bidder: ", err)
 	}
-	conn.Write([]byte("winner"))
+	winnerNotification := common.WinnerNotification{ WinningPrice: price }
+	//encoder := gob.NewEncoder(conn)
+	//encoder.Encode(winnerNotification)
+	notifBytes, err := json.Marshal(winnerNotification)
+	if err != nil {
+		fmt.Println("Issue encoding winner notification: ", err)
+	}
+	conn.Write(notifBytes)
 }
 
 func (s *Seller) calculateNewRound(highestBid uint) {
