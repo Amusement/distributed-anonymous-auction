@@ -104,8 +104,6 @@ func (s *Seller) checkRoundTermination() {
 		for _, priceMap := range s.BidPoints {
 			isDone := false
 			for i := len(priceMap) - 1; i >= 0; i-- {
-				fmt.Println(len(priceMap))
-				fmt.Println(i)
 				price := common.Price(s.AuctionRound.Prices[i])
 				encryptedID := priceMap[price]
 				res := s.decodeID(encryptedID.Val.Bytes())
@@ -115,6 +113,7 @@ func (s *Seller) checkRoundTermination() {
 					fmt.Println("There are multiple winners for price: ", price)
 					s.calculateNewRound(uint(price))
 					isDone = true
+					s.BidPoints = make(map[string]map[common.Price]common.BigInt)
 					break
 				} else {
 					fmt.Println("Got a winner: ", res)
