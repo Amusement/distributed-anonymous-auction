@@ -37,6 +37,9 @@ import (
 	"time"
 )
 
+const NOBID = "No Bid"
+const MULTIPLEWINNERS = "Multiple Winners"
+
 // TODO: Consider moving some fields into AuctionRound type
 
 type Seller struct {
@@ -92,27 +95,31 @@ func (s *Seller) checkRoundTermination() {
 		time.Sleep(timeForEnd)
 
 		// Waiting for calculating round to end
-		time.Sleep(s.AuctionRound.Interval.Duration)
+		time.Sleep(5 * time.Second)
 
 		// Calculate for a winner
-		if len(s.BidPoints) < len(s.AuctionRound.Auctioneers)/2 {
-			// TODO If we did not hear back from majority of auctioneers, we fail
+		if len(s.BidPoints) < s.AuctionRound.T {
+			fmt.Println("We lost more than T auctioneers :(")
 		}
-		for auctioneerID, priceMap := range s.BidPoints {
+		for _, priceMap := range s.BidPoints {
 			for price, encryptedID := range priceMap {
 				res := s.decodeID(encryptedID.Val.Bytes())
-				fmt.Printf("from Auctioneer: %v price %v: Decoded result: %v\n", auctioneerID, price, res)
-				// TODO we can now decode, keep trak of majority?
+				fmt.Println(price)
+				if res == NOBID {
+					fmt.Println("There are no bids for price: ", price)
+				} else if res == MULTIPLEWINNERS {
+					fmt.Println("There are multiple winners for price: ", price)
+					s.calculateNewRound(uint(price))
+				} else {
+					fmt.Println("Got a winner for price ", price, ": ", res)
+					s.AuctionRound.CurrentRound = -1
+					time.Sleep(5 * time.Second)
+					// TODO Contact Winner
+					return
+				}
 			}
 		}
-		round := s.AuctionRound
-		round.CurrentRound += 1
-		round.StartTime = time.Now().Add(1 * time.Minute)
-		s.AuctionRound = round
 	}
-
-	// TODO: Receive ids of highest price range from auctioneers
-	// TODO: Set waiting for calculation to false and determine if there will be another round or auction is over
 }
 
 func (s *Seller) StartAuction(address string) {

@@ -71,26 +71,17 @@ func main() {
                         }
                 }
 
-		//priceStrings := strings.Split(strings.TrimSpace(priceRange), "\n")
-		//priceStrings := strings.Split(strings.TrimSpace(priceRange), ",")
 		var prices = []uint{}
                 for i := 0; i < numPrices; i++ {
                         prices = append(prices, uint(initialPrice + i*stride))
                 }
 		log.Println("Got pricerange: ", prices, " of length: ", len(prices))
 
-	//	for _, i := range priceStrings {
-	//		j, err := strconv.ParseUint(i, 10, 32)
-	//		if err != nil {
-	//			panic(err)
-	//		}
-	//		prices = append(prices, uint(j))
-	//	}
-
 		s.AuctionRound.Prices = prices
 		s.AuctionRound.CurrentRound += 1
 
 		fmt.Println("Waiting for current round to finish...")
+		time.Sleep(time.Second * 1000)
 		for s.AuctionRound.StartTime.Add(s.AuctionRound.Interval.Duration).After(time.Now().UTC()) {
 			time.Sleep(time.Second) // Sleep and check every 1 second
 		}

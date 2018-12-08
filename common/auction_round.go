@@ -21,7 +21,7 @@ type AuctionRound struct {
 	Prices       []uint
 	Auctioneers  []string
 	T            int
-	CurrentRound int  // If current round is -1 the auction is over. If current round is -2 the seller is still waiting for auctioneers.
+	CurrentRound int  // If -1 it means the auction is over
 }
 
 type AwaitingCalculationMessage struct {
