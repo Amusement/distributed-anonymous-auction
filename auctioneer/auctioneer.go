@@ -52,6 +52,7 @@ func (a *Auctioneer) Start() {
 }
 
 func (a *Auctioneer) UpdateRoundInfo() {
+	currentRoundNumber := a.roundInfo.CurrentRound
 	req, err := http.NewRequest("GET", "http://"+a.config.SellerIpPort+"/seller/roundinfo", nil)
 	client := &http.Client{}
 
@@ -71,6 +72,9 @@ func (a *Auctioneer) UpdateRoundInfo() {
 		log.Println(err)
 	}
 	a.roundInfo = roundInfo
+	if currentRoundNumber + 1 == a.roundInfo.CurrentRound {
+		a.currentBids = make(map[common.Price][]common.Point)
+	}
 }
 
 // Receives bids from a bidder and returns if true if it was successfully received
