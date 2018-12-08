@@ -93,7 +93,7 @@ func (s *Seller) checkRoundTermination() {
 		// Waiting for bidding round to end
 		timeForEnd := time.Until(s.AuctionRound.StartTime.Add(s.AuctionRound.Interval.Duration))
 		time.Sleep(timeForEnd)
-
+		fmt.Println("Round is over. Waiting for lagrange calculation and all that stuff.")
 		// Waiting for calculating round to end
 		time.Sleep(5 * time.Second)
 
@@ -102,19 +102,23 @@ func (s *Seller) checkRoundTermination() {
 			fmt.Println("We lost more than T auctioneers :(")
 		}
 		for _, priceMap := range s.BidPoints {
-			for price, encryptedID := range priceMap {
+			for i := len(priceMap) - 1; i >= 0; i-- {
+				price := common.Price(s.AuctionRound.Prices[i])
+				encryptedID := priceMap[price]
 				res := s.decodeID(encryptedID.Val.Bytes())
+				fmt.Println(price)
+				fmt.Println(res)
 				if res == NOBID {
 					fmt.Println("There are no bids for price: ", price)
 				} else if res == MULTIPLEWINNERS {
 					fmt.Println("There are multiple winners for price: ", price)
 					s.calculateNewRound(uint(price))
+					break
 				} else {
 					fmt.Println("Got a winner: ", res)
-					s.AuctionRound.CurrentRound = -1
 					s.contactWinner(res, price)
+					s.AuctionRound.CurrentRound = -1
 					time.Sleep(5 * time.Second)
-					// TODO Contact Winner
 					return
 				}
 			}
@@ -195,7 +199,7 @@ func (s *Seller) calculateNewRound(highestBid uint) {
 	prices, _ := s.CalculateNewPrices(highestBid)
 	newAuctionRound := common.AuctionRound{
 		Item:         s.AuctionRound.Item,
-		StartTime:    time.Now().Add(time.Minute),
+		StartTime:    time.Now().Add(time.Second),
 		Interval:     s.AuctionRound.Interval,
 		Prices:       prices,
 		Auctioneers:  s.AuctionRound.Auctioneers,

@@ -9,6 +9,7 @@ import (
 	"strconv"
 	"strings"
 	"net"
+	"time"
 )
 
 // Hack to get current IP address
@@ -32,17 +33,30 @@ func main() {
     // Initialize bidder
     bidder := bidder.InitBidder(os.Args[1], thisIP().String())
 
-    fmt.Printf("The seller is selling \"%v\" at the following prices: %v.\n", bidder.RoundInfo.Item, bidder.RoundInfo.Prices)
+    for {
+		fmt.Printf("The seller is selling \"%v\" at the following prices: %v.\n", bidder.RoundInfo.Item, bidder.RoundInfo.Prices)
+		currentRound := bidder.RoundInfo.CurrentRound
+		reader := bufio.NewReader(os.Stdin)
+		fmt.Print("Enter your maximum bid: ")
+		text, _ := reader.ReadString('\n')
 
-	reader := bufio.NewReader(os.Stdin)
-	fmt.Print("Enter your maximum bid: ")
-	text, _ := reader.ReadString('\n')
-
-	maxBid, err := strconv.Atoi(strings.TrimSpace(text))
-	if err != nil {
-		fmt.Println("Your bid was not understood: ", err)
-		os.Exit(1)
+		maxBid, err := strconv.Atoi(strings.TrimSpace(text))
+		if err != nil {
+			fmt.Println("Your bid was not understood: ", err)
+			os.Exit(1)
+		}
+		bidder.ProcessBid(maxBid)
+		go bidder.ListenSeller()
+		for {
+			bidder.LearnAuctionRound()
+			if bidder.RoundInfo.CurrentRound == -1 {
+				fmt.Println("Auction is over. Byeeee.")
+				return
+			} else if bidder.RoundInfo.CurrentRound == currentRound + 1 {
+				fmt.Println("Auction was tied. Going to tie-breaking round.")
+				break
+			}
+			time.Sleep(1 * time.Second)
+		}
 	}
-	bidder.ProcessBid(maxBid)
-	bidder.ListenSeller()
 }

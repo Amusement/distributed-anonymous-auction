@@ -34,7 +34,7 @@ func InitBidder(sellerAddr string, bidderIP string) *Bidder {
 		sellerIP: sellerAddr,
 		bidderIP: bidderIP,
 	}
-	b.learnAuctionRound()
+	b.LearnAuctionRound()
 	//log.Printf("Bidder initialized to: %v", b)
 	return b
 }
@@ -76,7 +76,7 @@ func (b *Bidder) ListenSeller() {
 }
 
 // Directly learn the auction round configuration from the seller along with public key
-func (b *Bidder) learnAuctionRound() {
+func (b *Bidder) LearnAuctionRound() {
 	// Get seller's public key
 	uri := "http://" + b.sellerIP + "/seller/key"
 	response, err := http.Get(uri)
