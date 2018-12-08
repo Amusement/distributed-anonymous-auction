@@ -50,7 +50,7 @@ func main() {
 		for {
 			bidder.LearnAuctionRound()
 			if bidder.RoundInfo.CurrentRound == -1 {
-				fmt.Println("Auction is over. Byeeee.")
+				fmt.Println("Auction is over. Byeeee. You lost.")
 				return
 			} else if bidder.RoundInfo.CurrentRound == currentRound + 1 {
 				fmt.Println("Auction was tied. Going to tie-breaking round.")
