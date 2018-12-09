@@ -132,12 +132,11 @@ func (a *Auctioneer) runAuction() {
 			} else if a.roundInfo.CurrentRound == -1 {
 				fmt.Println("Auction over")
 				return
-			} else {
-				a.runAuctionRound()
 			}
 			// some backoff for querying
 			time.Sleep(time.Second)
 		}
+		a.runAuctionRound()
 	}
 }
 
