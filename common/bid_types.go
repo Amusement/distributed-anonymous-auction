@@ -40,7 +40,7 @@ type WinnerNotification struct {
 
 type TotalBids struct {
 	AuctioneerId string
-	Points       ListCompressedPoints
+	Points       CompressedPoints
 }
 
 func MarshalBidPoints(points BidPoints) ([]byte, error) {

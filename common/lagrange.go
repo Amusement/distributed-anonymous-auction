@@ -11,9 +11,6 @@ type lagrangePoint struct {
 
 type lagrangePoints []lagrangePoint
 
-// For some reason, the algorithm I found (I had to convert it to use big.Int and some minor tweaks)
-//  is off by 1 all the time. Not exactly sure why, but I tested with couple of random points, but always off by 1
-//  For now, we just minus 1 at the final result until I can figure out what the heck I did wrong
 func (ps lagrangePoints) lagrange() *big.Int {
 	result := new(big.Int)
 	lenPS := len(ps)
@@ -35,19 +32,18 @@ func (ps lagrangePoints) lagrange() *big.Int {
 		result.Add(result, Yterm)
 	}
 	return result
-	//return result.Sub(result, big.NewInt(1)) // Hack.. I am off by 1..?
 }
 
-//func ComputeLagrange(points []Point) *big.Int {
-func ComputeLagrange(compressedPoints ListCompressedPoints) map[Price]BigInt {
+func ComputeLagrange(compressedPoints []CompressedPoints) map[Price]BigInt {
 	lagrangeMap := make(map[Price]lagrangePoints)
-	for _, cp := range compressedPoints.ListPoints {
+	for _, cp := range compressedPoints {
 		for k, v := range cp.Points {
 			lagrangeMap[k] = append(lagrangeMap[k], lagrangePoint{
 				X: big.NewInt(int64(v.X)),
-				Y: v.Y.Val})
+				Y: big.NewInt(0).SetBytes(v.Y.Val.Bytes())}) // copy over the value
 		}
 	}
+
 	interpolationMap := make(map[Price]BigInt)
 	for k, v := range lagrangeMap {
 		interpolationMap[k] = BigInt{v.lagrange()}

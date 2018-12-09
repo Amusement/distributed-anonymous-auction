@@ -9,6 +9,7 @@ import (
 	"log"
 	"math/big"
 	"net/http"
+	"strconv"
 	"sync"
 	"time"
 )
@@ -19,6 +20,7 @@ type Auctioneer struct {
 	bidMutex    *sync.Mutex
 	currentBids map[common.Price][]common.Point
 	roundInfo   common.AuctionRound
+	lagrangeMap common.CompressedPoints // Calculated average lagrange value for seller to query
 }
 
 type Config struct {
@@ -34,6 +36,7 @@ type AuctionRpcServer struct {
 func Initialize(config Config) *Auctioneer {
 	return &Auctioneer{config: config,
 		currentBids: make(map[common.Price][]common.Point),
+		lagrangeMap: common.CompressedPoints{make(map[common.Price]common.Point)},
 		bidMutex:    &sync.Mutex{}}
 }
 
@@ -43,6 +46,7 @@ func (a *Auctioneer) Start() {
 	rtr := mux.NewRouter()
 	rtr.HandleFunc("/auctioneer/sendBid", a.SendBid).Methods("POST")
 	rtr.HandleFunc("/auctioneer/compressedPoints", a.GetCompressedPoints).Methods("GET")
+	rtr.HandleFunc("/auctioneer/lagrange/{price:[0-9]+}", a.GetLagrange).Methods("GET")
 	go a.runAuction()
 	log.Println("Starting the auctioneer server...")
 	err := http.ListenAndServe(a.config.LocalIpPort, rtr)
@@ -70,7 +74,7 @@ func (a *Auctioneer) UpdateRoundInfo() {
 		log.Println(err)
 	}
 	a.roundInfo = roundInfo
-	if currentRoundNumber + 1 == a.roundInfo.CurrentRound {
+	if currentRoundNumber+1 == a.roundInfo.CurrentRound {
 		a.currentBids = make(map[common.Price][]common.Point)
 	}
 }
@@ -168,9 +172,49 @@ func (a *Auctioneer) runAuctionRound() {
 		}
 	}
 
-	//fmt.Println("Compressed points received", compressedPoints)
-	a.SendTotalPoints(common.TotalBids{a.config.ExternalIpPort, common.ListCompressedPoints{compressedPoints}})
-	time.Sleep(time.Until(a.roundInfo.StartTime.Add(a.roundInfo.Interval.Duration).Add(a.roundInfo.Interval.Duration/common.IntervalMultiple)))
+	// Get T+1 group permutation from other auctioneer's point
+	groupPermutation := getPermutation(compressedPoints, a.roundInfo.T+1)
+
+	// Calculate lagrange for each permutation group and keep track of majority
+	freqLagrange := make(map[common.Price]map[common.BigInt]int)
+	for _, group := range groupPermutation {
+		res := common.ComputeLagrange(group)
+		for k, v := range res {
+			if _, ok := freqLagrange[k]; !ok {
+				freqLagrange[k] = make(map[common.BigInt]int)
+				freqLagrange[k][v] = 0
+			}
+			freqLagrange[k][v] += 1
+		}
+	}
+	// Calculate majority from all lagrange permutation we calculated
+	a.lagrangeMap = common.CompressedPoints{make(map[common.Price]common.Point)}
+	for price, bidMap := range freqLagrange {
+		currCount := 0
+		currID := big.NewInt(0)
+		for id, frequency := range bidMap {
+			if frequency > currCount {
+				currID = id.Val
+			}
+		}
+		a.lagrangeMap.Points[price] = common.Point{Y: common.BigInt{currID}}
+	}
+	time.Sleep(time.Until(a.roundInfo.StartTime.Add(a.roundInfo.Interval.Duration).Add(a.roundInfo.Interval.Duration / common.IntervalMultiple)))
+}
+
+func (a *Auctioneer) GetLagrange(w http.ResponseWriter, r *http.Request) {
+	price := mux.Vars(r)["price"]
+	uPrice, err := strconv.ParseUint(price, 10, 32)
+	if err != nil {
+		fmt.Println("Error parsing into uint: ", err)
+		return
+	}
+	payload := a.lagrangeMap.Points[common.Price(uPrice)]
+	data, err := json.Marshal(payload)
+	if err != nil {
+		fmt.Println("error on marshalling: ", err)
+	}
+	w.Write(data)
 }
 
 func (a *Auctioneer) QueryCompressed(ipPort string) (common.CompressedPoints, error) {
@@ -183,12 +227,8 @@ func (a *Auctioneer) QueryCompressed(ipPort string) (common.CompressedPoints, er
 	if err != nil {
 		return compressedPoints, err
 	}
-
 	defer resp.Body.Close()
 
-	if err != nil {
-		log.Fatal("NewRequest: ", err)
-	}
 	if err := json.NewDecoder(resp.Body).Decode(&compressedPoints); err != nil {
 		return compressedPoints, err
 	}
@@ -208,4 +248,27 @@ func (a *Auctioneer) SendTotalPoints(bids common.TotalBids) {
 	if err != nil {
 		fmt.Println(err)
 	}
+}
+
+// Given a whole list of compressed points, it returns a list of list with permutation of tValue
+func getPermutation(compressedPoints []common.CompressedPoints, group int) [][]common.CompressedPoints {
+	res := make([][]common.CompressedPoints, 0)
+	if len(compressedPoints) < group {
+		return res
+	}
+
+	if group == 1 {
+		for _, cp := range compressedPoints {
+			res = append(res, []common.CompressedPoints{cp})
+		}
+		return res
+	}
+
+	for i, cp := range compressedPoints {
+		childRes := getPermutation(compressedPoints[i+1:], group-1)
+		for _, childList := range childRes {
+			res = append(res, append([]common.CompressedPoints{cp}, childList...))
+		}
+	}
+	return res
 }

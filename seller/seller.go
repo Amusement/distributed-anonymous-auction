@@ -35,6 +35,7 @@ import (
 	"os"
 	"strings"
 	"time"
+	"strconv"
 )
 
 const NOBID = "No Bid"
@@ -43,12 +44,12 @@ const MULTIPLEWINNERS = "Multiple Winners"
 // TODO: Consider moving some fields into AuctionRound type
 
 type Seller struct {
-	AuctionRound          common.AuctionRound
-	router                *mux.Router
-	publicKey             rsa.PublicKey
-	privateKey            *rsa.PrivateKey
+	AuctionRound common.AuctionRound
+	router       *mux.Router
+	publicKey    rsa.PublicKey
+	privateKey   *rsa.PrivateKey
 	// Key is Ip Port of auctioneer
-	BidPoints map[string]map[common.Price]common.BigInt
+	BidPoints map[string]map[common.Price]common.Point
 }
 
 func Initialize(configFile string) *Seller {
@@ -81,11 +82,11 @@ func Initialize(configFile string) *Seller {
 	// Create a global seller
 	privK, pubK := common.GenerateRSA() // Generate RSA key pair
 	seller := &Seller{
-		AuctionRound:          auctionRound,
-		router:                rtr,
-		publicKey:             pubK,
-		privateKey:            privK,
-		BidPoints:             make(map[string]map[common.Price]common.BigInt),
+		AuctionRound: auctionRound,
+		router:       rtr,
+		publicKey:    pubK,
+		privateKey:   privK,
+		BidPoints:    make(map[string]map[common.Price]common.Point),
 	}
 	return seller
 }
@@ -97,7 +98,63 @@ func (s *Seller) checkRoundTermination() {
 		time.Sleep(timeForEnd)
 		fmt.Println("Round is over. Waiting for lagrange calculation and all that stuff.")
 		// Waiting for calculating round to end
-		time.Sleep(s.AuctionRound.Interval.Duration/common.IntervalMultiple)
+		time.Sleep(s.AuctionRound.Interval.Duration / common.IntervalMultiple)
+
+		// A temporary code for backward compatability ---- reimplement this
+		// This for loop queires ALL the price and stores the price into BidPoints
+		for _, price := range s.AuctionRound.Prices {
+			for auctioneerID, ipPort := range s.AuctionRound.Auctioneers {
+				query := "http://" + ipPort + "/auctioneer/lagrange/" + strconv.FormatUint(uint64(price), 10)
+				req, err := http.NewRequest("GET", query, nil)
+				client := &http.Client{}
+				var point common.Point
+
+				resp, err := client.Do(req)
+				if err != nil {
+					log.Println("error connecting to auctioneer, skipping... ")
+					continue
+				}
+				defer resp.Body.Close()
+				if err := json.NewDecoder(resp.Body).Decode(&point); err == nil {
+					id := strconv.Itoa(auctioneerID + 1)
+					if _, ok := s.BidPoints[id]; !ok {
+						s.BidPoints[id] = make(map[common.Price]common.Point)
+					}
+					s.BidPoints[id][common.Price(price)] = point
+				} else {
+					log.Println("error unmarhsalling: ", err)
+				}
+			}
+		}
+		// TODO:
+		//  Get lagrange from highest price value and downwards until we find a winner or none, and delete above code
+
+        // A temporary code for backward compatability ---- reimplement this
+        // This for loop queires ALL the price and stores the price into BidPoints
+        for _, price := range s.AuctionRound.Prices {
+            for auctioneerID, ipPort := range s.AuctionRound.Auctioneers {
+                query := "http://"+ipPort+"/auctioneer/lagrange/"+strconv.FormatUint(uint64(price),10)
+                req, err := http.NewRequest("GET", query, nil)
+                client := &http.Client{}
+                var point common.Point
+
+                resp, err := client.Do(req)
+                if err != nil {
+                    log.Println("error connecting to auctioneer, skipping... ")
+                    continue
+                }
+                defer resp.Body.Close()
+                if err := json.NewDecoder(resp.Body).Decode(&point); err == nil {
+                    id := strconv.Itoa(auctioneerID+1)
+                    if _, ok := s.BidPoints[id]; !ok {
+                        s.BidPoints[id] = make(map[common.Price]common.Point)
+                    }
+                    s.BidPoints[id][common.Price(price)] = point
+                }
+            }
+        }
+        // TODO:
+        //  Get lagrange from highest price value and downwards until we find a winner or none, and delete above code
 
 		// Calculate for a winner
 		if len(s.BidPoints) < s.AuctionRound.T {
@@ -108,14 +165,14 @@ func (s *Seller) checkRoundTermination() {
 			for i := len(priceMap) - 1; i >= 0; i-- {
 				price := common.Price(s.AuctionRound.Prices[i])
 				encryptedID := priceMap[price]
-				res := s.decodeID(encryptedID.Val.Bytes())
+				res := s.decodeID(encryptedID.Y.Val.Bytes())
 				if res == NOBID {
 					fmt.Println("There are no bids for price: ", price)
 				} else if res == MULTIPLEWINNERS {
 					fmt.Println("There are multiple winners for price: ", price)
 					s.calculateNewRound(uint(price))
 					isDone = true
-					s.BidPoints = make(map[string]map[common.Price]common.BigInt)
+					s.BidPoints = make(map[string]map[common.Price]common.Point)
 					break
 				} else {
 					fmt.Println("Got a winner: ", res)
@@ -135,7 +192,6 @@ func (s *Seller) checkRoundTermination() {
 func (s *Seller) StartAuction(address string) {
 	s.router.HandleFunc("/seller/key", s.GetPublicKey).Methods("GET")
 	s.router.HandleFunc("/seller/roundinfo", s.GetRoundInfo).Methods("GET")
-	s.router.HandleFunc("/seller/bidpoint", s.PostBidsPoint).Methods("POST")
 
 	// Run the REST server
 	go s.checkRoundTermination()
@@ -158,20 +214,7 @@ func (s *Seller) GetRoundInfo(w http.ResponseWriter, r *http.Request) {
 	w.Write(data)
 }
 
-// receives points from the auctioneers
-func (s *Seller) PostBidsPoint(w http.ResponseWriter, r *http.Request) {
-	var totalBids common.TotalBids
-	err := json.NewDecoder(r.Body).Decode(&totalBids)
-	if err != nil {
-		fmt.Println(err)
-		return
-	}
-	s.BidPoints[totalBids.AuctioneerId] = common.ComputeLagrange(totalBids.Points)
-	w.WriteHeader(200)
-}
-
 // Seller's private function ===========
-
 func (s *Seller) decodeID(msg []byte) string {
 	if len(msg) == 0 {
 		return "No Bid"
@@ -191,7 +234,7 @@ func (s *Seller) contactWinner(ipPortAndPrice string, price common.Price) {
 	if err != nil {
 		fmt.Println("Was not able to contact winning bidder: ", err)
 	}
-	winnerNotification := common.WinnerNotification{ WinningPrice: price }
+	winnerNotification := common.WinnerNotification{WinningPrice: price}
 	//encoder := gob.NewEncoder(conn)
 	//encoder.Encode(winnerNotification)
 	notifBytes, err := json.Marshal(winnerNotification)

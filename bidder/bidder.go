@@ -42,7 +42,7 @@ func InitBidder(sellerAddr string, bidderIP string) *Bidder {
 // Listens for seller communications
 // Local IP:port?
 func (b *Bidder) ListenSeller() {
-	listener, err := net.Listen("tcp", b.bidderIP + ":" + strconv.Itoa(b.bidderPort))
+	listener, err := net.Listen("tcp", b.bidderIP+":"+strconv.Itoa(b.bidderPort))
 	if err != nil {
 		log.Fatalf("Unable to listen for seller communications: ", err)
 	}
