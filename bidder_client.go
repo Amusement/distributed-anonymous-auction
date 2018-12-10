@@ -68,7 +68,7 @@ func main() {
 				return
 			} else if bidder.RoundInfo.CurrentRound == currentRound + 1 {
 				timeForStart := time.Until(bidder.RoundInfo.StartTime)
-				fmt.Println("Auction was tied. Going to tie-breaking round in: ", timeForStart)
+				fmt.Println("Auction was tied. Going to tie-breaking round in ", timeForStart)
 				time.Sleep(timeForStart)
 				break
 			}
