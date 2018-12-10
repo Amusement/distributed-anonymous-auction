@@ -205,6 +205,7 @@ func (a *Auctioneer) runAuctionRound() {
 func (a *Auctioneer) GetLagrange(w http.ResponseWriter, r *http.Request) {
 	price := mux.Vars(r)["price"]
 	uPrice, err := strconv.ParseUint(price, 10, 32)
+	fmt.Println("Got lagrange request from seller for price ", price)
 	if err != nil {
 		fmt.Println("Error parsing into uint: ", err)
 		return

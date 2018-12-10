@@ -33,9 +33,9 @@ import (
 	"net"
 	"net/http"
 	"os"
+	"strconv"
 	"strings"
 	"time"
-	"strconv"
 )
 
 const NOBID = "No Bid"
@@ -96,7 +96,7 @@ func (s *Seller) checkRoundTermination() {
 		// Waiting for bidding round to end
 		timeForEnd := time.Until(s.AuctionRound.StartTime.Add(s.AuctionRound.Interval.Duration))
 		time.Sleep(timeForEnd)
-		fmt.Println("Round is over. Waiting for lagrange calculation and all that stuff.")
+		fmt.Println("Bidding phase is is over. Waiting for lagrange calculation and all that stuff.")
 		// Waiting for calculating round to end
 		time.Sleep(s.AuctionRound.Interval.Duration / common.IntervalMultiple)
 
@@ -138,23 +138,25 @@ func (s *Seller) checkRoundTermination() {
                 client := &http.Client{}
                 var point common.Point
 
-                resp, err := client.Do(req)
-                if err != nil {
-                    log.Println("error connecting to auctioneer, skipping... ")
-                    continue
-                }
-                defer resp.Body.Close()
-                if err := json.NewDecoder(resp.Body).Decode(&point); err == nil {
-                    id := strconv.Itoa(auctioneerID+1)
-                    if _, ok := s.BidPoints[id]; !ok {
-                        s.BidPoints[id] = make(map[common.Price]common.Point)
-                    }
-                    s.BidPoints[id][common.Price(price)] = point
-                }
-            }
-        }
-        // TODO:
-        //  Get lagrange from highest price value and downwards until we find a winner or none, and delete above code
+				resp, err := client.Do(req)
+				if err != nil {
+					log.Println("error connecting to auctioneer, skipping... ")
+					continue
+				}
+				if err := json.NewDecoder(resp.Body).Decode(&point); err == nil {
+					id := strconv.Itoa(auctioneerID + 1)
+					if _, ok := s.BidPoints[id]; !ok {
+						s.BidPoints[id] = make(map[common.Price]common.Point)
+					}
+					s.BidPoints[id][common.Price(price)] = point
+				} else {
+					fmt.Println(err)
+				}
+				resp.Body.Close()
+			}
+		}
+		// TODO:
+		//  Get lagrange from highest price value and downwards until we find a winner or none, and delete above code
 
 		// Calculate for a winner
 		if len(s.BidPoints) < s.AuctionRound.T {
