@@ -102,6 +102,7 @@ func (s *Seller) checkRoundTermination() {
 
 		// A temporary code for backward compatability ---- reimplement this
 		// This for loop queires ALL the price and stores the price into BidPoints
+		s.BidPoints = make(map[string]map[common.Price]common.Point)
 		for _, price := range s.AuctionRound.Prices {
 			for auctioneerID, ipPort := range s.AuctionRound.Auctioneers {
 				query := "http://" + ipPort + "/auctioneer/lagrange/" + strconv.FormatUint(uint64(price), 10)
@@ -126,35 +127,7 @@ func (s *Seller) checkRoundTermination() {
 				}
 			}
 		}
-		// TODO:
-		//  Get lagrange from highest price value and downwards until we find a winner or none, and delete above code
 
-        // A temporary code for backward compatability ---- reimplement this
-        // This for loop queires ALL the price and stores the price into BidPoints
-        for _, price := range s.AuctionRound.Prices {
-            for auctioneerID, ipPort := range s.AuctionRound.Auctioneers {
-                query := "http://"+ipPort+"/auctioneer/lagrange/"+strconv.FormatUint(uint64(price),10)
-                req, err := http.NewRequest("GET", query, nil)
-                client := &http.Client{}
-                var point common.Point
-
-				resp, err := client.Do(req)
-				if err != nil {
-					log.Println("error connecting to auctioneer, skipping... ")
-					continue
-				}
-				if err := json.NewDecoder(resp.Body).Decode(&point); err == nil {
-					id := strconv.Itoa(auctioneerID + 1)
-					if _, ok := s.BidPoints[id]; !ok {
-						s.BidPoints[id] = make(map[common.Price]common.Point)
-					}
-					s.BidPoints[id][common.Price(price)] = point
-				} else {
-					fmt.Println(err)
-				}
-				resp.Body.Close()
-			}
-		}
 		// TODO:
 		//  Get lagrange from highest price value and downwards until we find a winner or none, and delete above code
 
@@ -174,7 +147,6 @@ func (s *Seller) checkRoundTermination() {
 					fmt.Println("There are multiple winners for price: ", price)
 					s.calculateNewRound(uint(price))
 					isDone = true
-					s.BidPoints = make(map[string]map[common.Price]common.Point)
 					break
 				} else {
 					fmt.Println("Got a winner: ", res)
