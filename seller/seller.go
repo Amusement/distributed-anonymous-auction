@@ -48,6 +48,7 @@ type Seller struct {
 	privateKey   *rsa.PrivateKey
 	// Key is Ip Port of auctioneer
 	BidPoints map[string]map[common.Price]common.Point
+	CloseAuction  bool
 }
 
 func Initialize(configFile string) *Seller {
@@ -85,6 +86,7 @@ func Initialize(configFile string) *Seller {
 		publicKey:    pubK,
 		privateKey:   privK,
 		BidPoints:    make(map[string]map[common.Price]common.Point),
+		CloseAuction: false,
 	}
 	return seller
 }
@@ -132,10 +134,14 @@ func (s *Seller) checkRoundTermination() {
 		// Calculate for a winner
 		if len(s.BidPoints) == 0 {
 			fmt.Println("There were no bids for your item :(")
+			time.Sleep(6 * time.Second)
+			s.CloseAuction = true
 			return
 		}
 		if len(s.BidPoints) < s.AuctionRound.T {
 			fmt.Println("We have less than T auctioneers :(")
+			time.Sleep(6 * time.Second)
+			s.CloseAuction = true
 			return
 		}
 		for _, priceMap := range s.BidPoints {
@@ -156,6 +162,7 @@ func (s *Seller) checkRoundTermination() {
 					s.contactWinner(res, price)
 					s.AuctionRound.CurrentRound = -1
 					time.Sleep(6 * time.Second)
+					s.CloseAuction = true
 					return
 				}
 			}
@@ -173,8 +180,6 @@ func (s *Seller) StartAuction(address string) {
 	// Run the REST server
 	go s.checkRoundTermination()
 	log.Printf("Error: %v", http.ListenAndServe(address, s.router))
-	// TODO remove this sleep after
-	time.Sleep(10000 * time.Second)
 }
 
 func (s *Seller) GetPublicKey(w http.ResponseWriter, r *http.Request) {

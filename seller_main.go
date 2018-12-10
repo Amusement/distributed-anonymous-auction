@@ -32,58 +32,56 @@ func main() {
 	fmt.Println("\n\n=====Starting the auction!=====")
 
 	reader := bufio.NewReader(os.Stdin)
-	//scanner := bufio.NewScanner(os.Stdin)
+
+	var initialPrice int
+	var err error
 	for {
-		//fmt.Printf("Enter list of prices separated by comma for round %v:\n", s.AuctionRound.CurrentRound)
-		//priceRange, _ := reader.ReadString('\n')
-		var initialPrice int
-		var err error
-		for {
-			fmt.Printf("Enter an initial price for the auction: ")
-			initialPriceString, _ := reader.ReadString('\n')
-			initialPrice, err = strconv.Atoi(strings.Replace(initialPriceString, "\n", "", 1))
-			if err != nil {
-				fmt.Println("Your initial price must be a number")
-			} else {
-				break
-			}
+		fmt.Printf("Enter an initial price for the auction: ")
+		initialPriceString, _ := reader.ReadString('\n')
+		initialPrice, err = strconv.Atoi(strings.Replace(initialPriceString, "\n", "", 1))
+		if err != nil {
+			fmt.Println("Your initial price must be a number")
+		} else {
+			break
 		}
-		var numPrices int
-		for {
-			fmt.Printf("Enter the number of prices for the auction: ")
-			numPricesString, _ := reader.ReadString('\n')
-			numPrices, err = strconv.Atoi(strings.Replace(numPricesString, "\n", "", 1))
-			if err != nil {
-				fmt.Println("The number of prices for the auction must be a number")
-			} else {
-				break
-			}
+	}
+	var numPrices int
+	for {
+		fmt.Printf("Enter the number of prices for the auction: ")
+		numPricesString, _ := reader.ReadString('\n')
+		numPrices, err = strconv.Atoi(strings.Replace(numPricesString, "\n", "", 1))
+		if err != nil {
+			fmt.Println("The number of prices for the auction must be a number")
+		} else {
+			break
 		}
-		var stride int
-		for {
-			fmt.Printf("Enter a stride for the prices: ")
-			strideString, _ := reader.ReadString('\n')
-			stride, err = strconv.Atoi(strings.Replace(strideString, "\n", "", 1))
-			if err != nil {
-				fmt.Println("The stride for the prices must be a number")
-			} else {
-				break
-			}
+	}
+	var stride int
+	for {
+		fmt.Printf("Enter a stride for the prices: ")
+		strideString, _ := reader.ReadString('\n')
+		stride, err = strconv.Atoi(strings.Replace(strideString, "\n", "", 1))
+		if err != nil {
+			fmt.Println("The stride for the prices must be a number")
+		} else {
+			break
 		}
+	}
 
-		var prices = []uint{}
-		for i := 0; i < numPrices; i++ {
-			prices = append(prices, uint(initialPrice+i*stride))
-		}
-		log.Println("Got pricerange: ", prices, " of length: ", len(prices))
+	var prices = []uint{}
+	for i := 0; i < numPrices; i++ {
+		prices = append(prices, uint(initialPrice+i*stride))
+	}
+	log.Println("Got pricerange: ", prices, " of length: ", len(prices))
 
-		s.AuctionRound.Prices = prices
-		s.AuctionRound.CurrentRound += 1
+	s.AuctionRound.Prices = prices
+	s.AuctionRound.CurrentRound += 1
 
-		fmt.Println("Waiting for current round to finish...")
-		time.Sleep(time.Second * 1000)
-		for s.AuctionRound.StartTime.Add(s.AuctionRound.Interval.Duration).After(time.Now().UTC()) {
-			time.Sleep(time.Second) // Sleep and check every 1 second
+	fmt.Println("Waiting for current round to finish...")
+	for {
+		time.Sleep(time.Second) // Sleep and check every 1 second
+		if s.CloseAuction {
+			break
 		}
 	}
 }
