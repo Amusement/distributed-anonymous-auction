@@ -85,14 +85,5 @@ func main() {
 		for s.AuctionRound.StartTime.Add(s.AuctionRound.Interval.Duration).After(time.Now().UTC()) {
 			time.Sleep(time.Second) // Sleep and check every 1 second
 		}
-
-		// Ask auctioneers for points
-		// Check if there is a winner
-		//   -- if winner, contact him
-		//   -- if tie, compute new round and start new round
-		// Check for winner
-		// Traverse through auctioneer list and call its REST API
-		// TODO
-
 	}
 }

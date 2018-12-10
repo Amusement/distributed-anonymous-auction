@@ -23,6 +23,15 @@ func thisIP() net.IP {
 	return localAddr.IP
 }
 
+func IntInList(list []uint, element uint) bool {
+	for _, number := range list {
+		if element == number {
+			return true
+		}
+	}
+	return false
+}
+
 func main() {
     //log.Println("Bidder client starting.")
     if len(os.Args) != 2 {
@@ -45,6 +54,11 @@ func main() {
 			fmt.Println("Your bid was not understood: ", err)
 			os.Exit(1)
 		}
+		fmt.Println(bidder.RoundInfo.Prices)
+		if !IntInList(bidder.RoundInfo.Prices, uint(maxBid)) {
+			fmt.Println("Your bid is not in the acceptable price range.")
+			continue
+		}
 		bidder.ProcessBid(maxBid)
 		go bidder.ListenSeller()
 		for {
@@ -56,7 +70,7 @@ func main() {
 				fmt.Println("Auction was tied. Going to tie-breaking round.")
 				break
 			}
-			time.Sleep(1 * time.Second)
+			time.Sleep(3 * time.Second)
 		}
 	}
 }

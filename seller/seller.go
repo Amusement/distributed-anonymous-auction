@@ -41,8 +41,6 @@ import (
 const NOBID = "No Bid"
 const MULTIPLEWINNERS = "Multiple Winners"
 
-// TODO: Consider moving some fields into AuctionRound type
-
 type Seller struct {
 	AuctionRound common.AuctionRound
 	router       *mux.Router
@@ -133,7 +131,7 @@ func (s *Seller) checkRoundTermination() {
 
 		// Calculate for a winner
 		if len(s.BidPoints) < s.AuctionRound.T {
-			fmt.Println("We lost more than T auctioneers :(")
+			fmt.Println("We have less than T auctioneers :(")
 		}
 		for _, priceMap := range s.BidPoints {
 			isDone := false
@@ -152,7 +150,7 @@ func (s *Seller) checkRoundTermination() {
 					fmt.Println("Got a winner: ", res)
 					s.contactWinner(res, price)
 					s.AuctionRound.CurrentRound = -1
-					time.Sleep(5 * time.Second)
+					time.Sleep(6 * time.Second)
 					return
 				}
 			}
