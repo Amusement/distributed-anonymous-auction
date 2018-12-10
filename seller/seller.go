@@ -94,7 +94,7 @@ func (s *Seller) checkRoundTermination() {
 		// Waiting for bidding round to end
 		timeForEnd := time.Until(s.AuctionRound.StartTime.Add(s.AuctionRound.Interval.Duration))
 		time.Sleep(timeForEnd)
-		fmt.Println("Bidding phase is is over. Waiting for lagrange calculation and all that stuff.")
+		fmt.Println("Bidding phase is over. Waiting for lagrange calculation and all that stuff.")
 		// Waiting for calculating round to end
 		time.Sleep(s.AuctionRound.Interval.Duration / common.IntervalMultiple)
 
@@ -130,8 +130,13 @@ func (s *Seller) checkRoundTermination() {
 		//  Get lagrange from highest price value and downwards until we find a winner or none, and delete above code
 
 		// Calculate for a winner
+		if len(s.BidPoints) == 0 {
+			fmt.Println("There were no bids for your item :(")
+			return
+		}
 		if len(s.BidPoints) < s.AuctionRound.T {
 			fmt.Println("We have less than T auctioneers :(")
+			return
 		}
 		for _, priceMap := range s.BidPoints {
 			isDone := false
