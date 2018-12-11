@@ -47,7 +47,7 @@ func (b *Bidder) ListenSeller() {
 		log.Fatalf("Unable to listen for seller communications: ", err)
 	}
 	defer listener.Close()
-	log.Printf("\n")
+	log.Printf("Listening for notifications.\n")
 
 	for {
 		conn, err := listener.Accept()
@@ -181,7 +181,7 @@ func (b *Bidder) SendPoints() {
 		if err != nil {
 			fmt.Println("Error encoding bidPoints: ", err)
 			failed = true
-			break
+			continue
 		}
 
 		var bidPointsDec common.BidPoints
@@ -189,14 +189,14 @@ func (b *Bidder) SendPoints() {
 		if err != nil {
 			fmt.Println("Error decoding bidPoints: ", err)
 			failed = true
-			break
+			continue
 		}
 
 		// Rough check of equality
 		if bidPointsDec.Points[0] != bidPoints.Points[0] {
 			fmt.Println("Didn't get the same result after decoding encoded points.")
 			failed = true
-			break
+			continue
 		}
 
 		url := "http://" + auctioneer + "/auctioneer/sendBid"
@@ -207,13 +207,13 @@ func (b *Bidder) SendPoints() {
 		if err != nil {
 			fmt.Printf("Unable to reach auctioneer %v\n", auctioneer)
 			failed = true
-			break
+			continue
 		}
 
 		if resp.StatusCode != 200 {
 			fmt.Printf("Auctioneer %v rejected the bid.\n", auctioneer)
 			failed = true
-			break
+			continue
 		}
 	}
 
