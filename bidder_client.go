@@ -43,6 +43,7 @@ func main() {
     bidder := bidder.InitBidder(os.Args[1], thisIP().String())
 
     for {
+		bidder.LearnAuctionRound()
 		fmt.Printf("The seller is selling \"%v\" at the following prices: %v.\n", bidder.RoundInfo.Item, bidder.RoundInfo.Prices)
 		currentRound := bidder.RoundInfo.CurrentRound
 		reader := bufio.NewReader(os.Stdin)
@@ -60,11 +61,16 @@ func main() {
 			continue
 		}
 		bidder.ProcessBid(maxBid)
+		// Send bids only once auction starts
+		timeForStart := time.Until(bidder.RoundInfo.StartTime)
+		time.Sleep(timeForStart)
+		bidder.SendPoints()
+
 		go bidder.ListenSeller()
 		for {
 			bidder.LearnAuctionRound()
 			if bidder.RoundInfo.CurrentRound == -1 {
-				fmt.Println("Auction is over. Byeeee. You lost.")
+				fmt.Println("You've lost the auction.")
 				return
 			} else if bidder.RoundInfo.CurrentRound == currentRound + 1 {
 				timeForStart := time.Until(bidder.RoundInfo.StartTime)

@@ -27,6 +27,7 @@ type Bidder struct {
 	sellerIP        string
 	bidderIP        string
 	bidderPort      int
+	auctioneerPricePoints map[int]map[common.Price]common.Point
 }
 
 func InitBidder(sellerAddr string, bidderIP string) *Bidder {
@@ -34,7 +35,6 @@ func InitBidder(sellerAddr string, bidderIP string) *Bidder {
 		sellerIP: sellerAddr,
 		bidderIP: bidderIP,
 	}
-	b.LearnAuctionRound()
 	//log.Printf("Bidder initialized to: %v", b)
 	return b
 }
@@ -110,7 +110,7 @@ func (b *Bidder) LearnAuctionRound() {
 	b.RoundInfo = roundInfo
 }
 
-// TODO: Choosing a hardcoded port for now, not ideal
+
 func (b *Bidder) ProcessBid(maxBid int) {
 	maxBidU := uint(maxBid)
 
@@ -162,10 +162,12 @@ func (b *Bidder) samplePoints(polynomials []polynomial.Poly) {
 			auctioneerPricePoints[x][common.Price(price)] = sampledPoint
 		}
 	}
-	b.sendPoints(auctioneerPricePoints)
+	b.auctioneerPricePoints = auctioneerPricePoints
+	//b.sendPoints(auctioneerPricePoints)
 }
 
-func (b *Bidder) sendPoints(auctioneerPricePoints map[int]map[common.Price]common.Point) {
+func (b *Bidder) SendPoints() {
+	auctioneerPricePoints := b.auctioneerPricePoints
 	failed := false
 
 	for i, auctioneer := range b.RoundInfo.Auctioneers {
