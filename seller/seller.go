@@ -111,21 +111,20 @@ func (s *Seller) checkRoundTermination() {
 					return
 			}
 			// Select the majority agreed upon lagrange value
-			freqTable := make(map[common.BigInt]int)
+			freqTable := make(map[string]int)
 			var majority common.BigInt
 			majorityOccurrences := 0
 			for _, item := range individualLagrangePoints {
-				if _, ok := freqTable[item.Y]; !ok {
-					freqTable[item.Y] = 0
+				if _, ok := freqTable[item.Y.Val.String()]; !ok {
+					freqTable[item.Y.Val.String()] = 0
 				}
-				freqTable[item.Y] += 1
-				if freqTable[item.Y] > majorityOccurrences {
-					majorityOccurrences = freqTable[item.Y]
+				freqTable[item.Y.Val.String()] += 1
+				if freqTable[item.Y.Val.String()] > majorityOccurrences {
+					majorityOccurrences = freqTable[item.Y.Val.String()]
 					majority = item.Y
 				}
 			}
-
-			if majorityOccurrences < (len(s.AuctionRound.Auctioneers) - s.AuctionRound.T) {
+			if  majorityOccurrences < (len(s.AuctionRound.Auctioneers) - s.AuctionRound.T) {
 				fmt.Printf("Majority of auctioneers were not in agreement for price %v. Taking the value %v auctioneers agree on.\n", price, majorityOccurrences)
 			}
 

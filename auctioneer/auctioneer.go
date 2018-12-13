@@ -177,16 +177,16 @@ func (a *Auctioneer) runAuctionRound() {
 	fmt.Printf("Will be searching over %v permutations of subsets.\n", len(groupPermutation))
 
 	// Calculate lagrange for each permutation group and keep track of majority
-	freqLagrange := make(map[common.Price]map[common.BigInt]int)
+	freqLagrange := make(map[common.Price]map[string]int)
 	for _, group := range groupPermutation {
 		//fmt.Println("Calculating for group: ", group)
 		res := common.ComputeLagrange(group)
 		for k, v := range res {
 			if _, ok := freqLagrange[k]; !ok {
-				freqLagrange[k] = make(map[common.BigInt]int)
-				freqLagrange[k][v] = 0
+				freqLagrange[k] = make(map[string]int)
+				freqLagrange[k][v.Val.String()] = 0
 			}
-			freqLagrange[k][v] += 1
+			freqLagrange[k][v.Val.String()] += 1
 		}
 	}
 	// Calculate majority from all lagrange permutation we calculated
@@ -196,7 +196,9 @@ func (a *Auctioneer) runAuctionRound() {
 		currID := big.NewInt(0)
 		for id, frequency := range bidMap {
 			if frequency > currCount {
-				currID = id.Val
+				//currID = id.Val
+				newI, _  := big.NewInt(0).SetString(id.Val, 10)
+				currID = newI
 				// Added following
 				currCount = frequency
 			}
