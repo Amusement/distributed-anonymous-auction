@@ -212,18 +212,17 @@ func (s *Seller) decodeID(msg []byte) string {
 func (s *Seller) contactWinner(ipPortAndPrice string, price common.Price) {
 	ipPort := strings.Split(ipPortAndPrice, " ")[0]
 	conn, err := net.Dial("tcp", ipPort)
-	defer conn.Close()
 	if err != nil {
 		fmt.Println("Was not able to contact winning bidder: ", err)
+        return
 	}
 	winnerNotification := common.WinnerNotification{WinningPrice: price}
-	//encoder := gob.NewEncoder(conn)
-	//encoder.Encode(winnerNotification)
 	notifBytes, err := json.Marshal(winnerNotification)
 	if err != nil {
 		fmt.Println("Issue encoding winner notification: ", err)
 	}
 	conn.Write(notifBytes)
+	conn.Close()
 }
 
 func (s *Seller) calculateNewRound(highestBid uint) {
