@@ -71,4 +71,4 @@ for ip in publicIPs[1:]:
     ssh.close()
 
 print("seller " + publicIPs[0])
-print("auctioneers " + publicIPs[1:])
+print("auctioneers " + str(publicIPs[1:]))
