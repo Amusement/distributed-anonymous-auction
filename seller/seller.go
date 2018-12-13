@@ -1,26 +1,5 @@
 package seller
 
-/*
-   Currently working feature
-       - Seller can generate its own RSA key value
-       - Basic REST api function working
-           - Can query public key
-           - Can query auctioneer list
-           - Can query  prices
-           - Can query current round
-           - Can query start time
-
-           - Can query t_value
-
-   Need to implement (not a whole list)
-       - Prices logic
-       - Round logic
-           - Start time / End time logic
-       - Winner declaration logic
-           - decodeID function is implemented, use this to figure it out
-       - Communication to Auctioneers using their REST API
-*/
-
 import (
 	"../common"
 	"crypto/rsa"
@@ -47,7 +26,9 @@ type Seller struct {
 	publicKey    rsa.PublicKey
 	privateKey   *rsa.PrivateKey
 	// Key is Ip Port of auctioneer
-	BidPoints map[string]map[common.Price]common.Point
+	//BidPoints map[string]map[common.Price]common.Point
+
+	agreedLagrangePoints map[common.Price]common.Point
 	CloseAuction  bool
 }
 
@@ -85,7 +66,8 @@ func Initialize(configFile string) *Seller {
 		router:       rtr,
 		publicKey:    pubK,
 		privateKey:   privK,
-		BidPoints:    make(map[string]map[common.Price]common.Point),
+		//BidPoints:    make(map[string]map[common.Price]common.Point),
+		agreedLagrangePoints: make(map[common.Price]common.Point),
 		CloseAuction: false,
 	}
 	return seller
@@ -100,11 +82,10 @@ func (s *Seller) checkRoundTermination() {
 		// Waiting for calculating round to end
 		time.Sleep(s.AuctionRound.Interval.Duration / common.IntervalMultiple)
 
-		// A temporary code for backward compatability ---- reimplement this
-		// This for loop queires ALL the price and stores the price into BidPoints
-		s.BidPoints = make(map[string]map[common.Price]common.Point)
+
 		for _, price := range s.AuctionRound.Prices {
-			for auctioneerID, ipPort := range s.AuctionRound.Auctioneers {
+			var individualLagrangePoints []common.Point
+			for _, ipPort := range s.AuctionRound.Auctioneers {
 				query := "http://" + ipPort + "/auctioneer/lagrange/" + strconv.FormatUint(uint64(price), 10)
 				req, err := http.NewRequest("GET", query, nil)
 				client := &http.Client{}
@@ -117,57 +98,89 @@ func (s *Seller) checkRoundTermination() {
 				}
 				defer resp.Body.Close()
 				if err := json.NewDecoder(resp.Body).Decode(&point); err == nil {
-					id := strconv.Itoa(auctioneerID + 1)
-					if _, ok := s.BidPoints[id]; !ok {
-						s.BidPoints[id] = make(map[common.Price]common.Point)
-					}
-					s.BidPoints[id][common.Price(price)] = point
+					individualLagrangePoints = append(individualLagrangePoints, point)
 				} else {
-					log.Println("error unmarhsalling: ", err)
+					log.Println("Didn't receive a valid point from auctioneer ", ipPort)
 				}
 			}
-		}
-
-		// TODO:
-		//  Get lagrange from highest price value and downwards until we find a winner or none, and delete above code
-
-		// Calculate for a winner
-		if len(s.BidPoints) == 0 {
-			fmt.Println("There were no bids for your item :(")
-			time.Sleep(6 * time.Second)
-			s.CloseAuction = true
-			return
-		}
-		if len(s.BidPoints) < s.AuctionRound.T {
-			fmt.Println("We have less than T auctioneers :(")
-			time.Sleep(6 * time.Second)
-			s.CloseAuction = true
-			return
-		}
-		for _, priceMap := range s.BidPoints {
-			isDone := false
-			for i := len(priceMap) - 1; i >= 0; i-- {
-				price := common.Price(s.AuctionRound.Prices[i])
-				encryptedID := priceMap[price]
-				res := s.decodeID(encryptedID.Y.Val.Bytes())
-				if res == NOBID {
-					fmt.Println("There are no bids for price: ", price)
-				} else if res == MULTIPLEWINNERS {
-					fmt.Println("There are multiple winners for price: ", price)
-					s.calculateNewRound(uint(price))
-					isDone = true
-					break
-				} else {
-					fmt.Println("Got a winner: ", res)
-					s.contactWinner(res, price)
-					s.AuctionRound.CurrentRound = -1
+			// Need at least T auctioneers input?
+			if len(individualLagrangePoints) <= s.AuctionRound.T {
+					fmt.Println("We don't have more than T auctioneers contributing points. Ending auction.")
 					time.Sleep(6 * time.Second)
 					s.CloseAuction = true
 					return
+			}
+			// Select the majority agreed upon lagrange value
+			freqTable := make(map[common.BigInt]int)
+			var majority common.BigInt
+			majorityOccurrences := 0
+			for _, item := range individualLagrangePoints {
+				if _, ok := freqTable[item.Y]; !ok {
+					freqTable[item.Y] = 0
+				}
+				freqTable[item.Y] += 1
+				if freqTable[item.Y] > majorityOccurrences {
+					majorityOccurrences = freqTable[item.Y]
+					majority = item.Y
 				}
 			}
-			if isDone == true {
+
+			if majorityOccurrences < (len(s.AuctionRound.Auctioneers) - s.AuctionRound.T) {
+				fmt.Printf("Majority of auctioneers were not in agreement for price %v. Taking the value %v auctioneers agree on.\n", price, majorityOccurrences)
+			}
+
+			s.agreedLagrangePoints[common.Price(price)] = common.Point{X:0, Y:majority}
+		}
+
+		//if len(s.BidPoints) < s.AuctionRound.T {
+		//	fmt.Println("We have less than T auctioneers :(")
+		//	time.Sleep(6 * time.Second)
+		//	s.CloseAuction = true
+		//	return
+		//}
+		//for _, priceMap := range s.agreedLagrangePoints {
+		//	isDone := false
+		//	for i := len(priceMap) - 1; i >= 0; i-- {
+		//		price := common.Price(s.AuctionRound.Prices[i])
+		//		encryptedID := priceMap[price]
+		//		res := s.decodeID(encryptedID.Y.Val.Bytes())
+		//		if res == NOBID {
+		//			fmt.Println("There are no bids for price: ", price)
+		//		} else if res == MULTIPLEWINNERS {
+		//			fmt.Println("There are multiple winners for price: ", price)
+		//			s.calculateNewRound(uint(price))
+		//			isDone = true
+		//			break
+		//		} else {
+		//			fmt.Println("Got a winner: ", res)
+		//			s.contactWinner(res, price)
+		//			s.AuctionRound.CurrentRound = -1
+		//			time.Sleep(6 * time.Second)
+		//			s.CloseAuction = true
+		//			return
+		//		}
+		//	}
+		//	if isDone == true {
+		//		break
+		//	}
+		//}
+		for i := len(s.AuctionRound.Prices) - 1; i >= 0; i-- {
+			price := common.Price(s.AuctionRound.Prices[i])
+			correspLPoint := s.agreedLagrangePoints[price]
+			res := s.decodeID(correspLPoint.Y.Val.Bytes())
+			if res == NOBID {
+				fmt.Println("There are no bids for price: ", price)
+			} else if res == MULTIPLEWINNERS {
+				fmt.Println("There are multiple winners for price: ", price)
+				s.calculateNewRound(uint(price))
 				break
+			} else {
+				fmt.Println("Got a winner: ", res)
+				s.contactWinner(res, price)
+				s.AuctionRound.CurrentRound = -1
+				time.Sleep(6 * time.Second)
+				s.CloseAuction = true
+				return
 			}
 		}
 	}

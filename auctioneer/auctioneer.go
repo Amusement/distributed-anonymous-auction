@@ -174,10 +174,12 @@ func (a *Auctioneer) runAuctionRound() {
 
 	// Get T+1 group permutation from other auctioneer's point
 	groupPermutation := getPermutation(compressedPoints, a.roundInfo.T+1)
+	fmt.Printf("Will be searching over %v permutations of subsets.\n", len(groupPermutation))
 
 	// Calculate lagrange for each permutation group and keep track of majority
 	freqLagrange := make(map[common.Price]map[common.BigInt]int)
 	for _, group := range groupPermutation {
+		//fmt.Println("Calculating for group: ", group)
 		res := common.ComputeLagrange(group)
 		for k, v := range res {
 			if _, ok := freqLagrange[k]; !ok {
@@ -195,8 +197,11 @@ func (a *Auctioneer) runAuctionRound() {
 		for id, frequency := range bidMap {
 			if frequency > currCount {
 				currID = id.Val
+				// Added following
+				currCount = frequency
 			}
 		}
+		fmt.Printf("%v subsets of size T+1 were in agreement on the Lagrange value.\n", currCount) 
 		a.lagrangeMap.Points[price] = common.Point{Y: common.BigInt{currID}}
 	}
 	time.Sleep(time.Until(a.roundInfo.StartTime.Add(a.roundInfo.Interval.Duration).Add(a.roundInfo.Interval.Duration / common.IntervalMultiple)))
