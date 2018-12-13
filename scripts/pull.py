@@ -4,6 +4,10 @@ import paramiko
 import json
 
 from constants import *
+result = subprocess.run([(
+        "az vmss list-instance-public-ips --resource-group %s --name %s --query [].{ip:ipAddress} -o tsv" % (
+    ResourceGroup, VMSSname))], stdout=subprocess.PIPE, shell=True)
+publicIPs = result.stdout.decode("utf-8").split("\n")[0:-1]
 
 def pull(ssh):
     ssh_stdin, ssh_stdout, ssh_stderr = ssh.exec_command("cd P2-d3w9a-b3c0b-b3l0b-k0b9$; git stash; git pull; git stash pop")
