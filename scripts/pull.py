@@ -10,7 +10,7 @@ result = subprocess.run([(
 publicIPs = result.stdout.decode("utf-8").split("\n")[0:-1]
 
 def pull(ssh):
-    ssh_stdin, ssh_stdout, ssh_stderr = ssh.exec_command("cd P2-d3w9a-b3c0b-b3l0b-k0b9$; git stash; git pull; git stash pop")
+    ssh_stdin, ssh_stdout, ssh_stderr = ssh.exec_command("cd P2-d3w9a-b3c0b-b3l0b-k0b9; git stash; git pull; git stash pop")
     ssh_stdout.channel.recv_exit_status()
     lines = ssh_stdout.readlines()
     for line in lines:
