@@ -13,30 +13,31 @@ type lagrangePoint struct {
 type lagrangePoints []lagrangePoint
 
 func (ps lagrangePoints) lagrange() *big.Int {
-	result := new(big.Float)
+	result := new(big.Rat)
 	lenPS := len(ps)
 
 	for i := 0; i < lenPS; i++ {
-		Yterm := new(big.Float).SetInt(ps[i].Y)
-		Zterm := big.NewFloat(1)
+		//Yterm := new(big.Float).SetInt(ps[i].Y)
+		Yterm := new(big.Rat).SetInt(ps[i].Y)
+		//Zterm := big.NewFloat(1)
+		Zterm := new(big.Rat).SetInt64(int64(1))
+
 		for j := 0; j < lenPS; j++ {
 			if j != i {
-				numo := new(big.Float)
-				numo.Sub(big.NewFloat(0), new(big.Float).SetInt(ps[j].X))
+				numo := new(big.Rat)
+				numo.Sub(big.NewRat(int64(0), int64(1)), new(big.Rat).SetInt(ps[j].X))
 				Yterm.Mul(Yterm, numo)
 
-				deno := new(big.Float)
-				deno.Sub(new(big.Float).SetInt(ps[i].X), new(big.Float).SetInt(ps[j].X))
+				deno := new(big.Rat)
+				deno.Sub(new(big.Rat).SetInt(ps[i].X), new(big.Rat).SetInt(ps[j].X))
 				Zterm.Mul(Zterm, deno)
 			}
 		}
-		result.Add(result, new(big.Float).Quo(Yterm, Zterm))
+		result.Add(result, new(big.Rat).Quo(Yterm, Zterm))
 	}
-	// Result is the final answer in floating point
-	rounded := result.SetPrec(53).SetMode(big.ToNearestAway)
-	intResult := new(big.Int)
-	rounded.Int(intResult)
-	fmt.Println("result: ", rounded)
+
+    intResult := result.Num()
+
 	return intResult
 }
 
