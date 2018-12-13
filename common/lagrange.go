@@ -2,6 +2,7 @@ package common
 
 import (
 	"math/big"
+	"fmt"
 )
 
 type lagrangePoint struct {
@@ -31,8 +32,11 @@ func (ps lagrangePoints) lagrange() *big.Int {
 		}
 		result.Add(result, new(big.Float).Quo(Yterm, Zterm))
 	}
+	// Result is the final answer in floating point
+	rounded := result.SetPrec(53).SetMode(big.ToNearestAway)
 	intResult := new(big.Int)
-	result.Int(intResult)
+	rounded.Int(intResult)
+	fmt.Println("result: ", rounded)
 	return intResult
 }
 

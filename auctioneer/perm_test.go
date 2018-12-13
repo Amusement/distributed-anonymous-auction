@@ -48,7 +48,14 @@ func TestPermutations1(t *testing.T) {
 
 	//t.Fatal(len(getPermutation(compressedPoints, T+1)))
 	res := getPermutation(compressedPoints, T+1)
-	t.Fatalf("%d groups: %v", len(res), res)
+	t.Logf("%d groups: %v\n\n", len(res), res)
+
+	for _, group := range res {
+		res2 := common.ComputeLagrange(group)
+		t.Logf("for group: %v got computed lagrange: %v\n", group, res2)
+	}
+
+	t.Fatal(".")
 }
 
 func getPermutation(compressedPoints []common.CompressedPoints, group int) [][]common.CompressedPoints {
