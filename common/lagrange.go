@@ -12,26 +12,28 @@ type lagrangePoint struct {
 type lagrangePoints []lagrangePoint
 
 func (ps lagrangePoints) lagrange() *big.Int {
-	result := new(big.Int)
+	result := new(big.Float)
 	lenPS := len(ps)
 
 	for i := 0; i < lenPS; i++ {
-		Yterm := ps[i].Y
+		Yterm := new(big.Float).SetInt(ps[i].Y)
+		Zterm := big.NewFloat(1)
 		for j := 0; j < lenPS; j++ {
 			if j != i {
-				numo := new(big.Int)
-				numo.Sub(big.NewInt(0), ps[j].X)
-				numo.Mul(Yterm, numo)
+				numo := new(big.Float)
+				numo.Sub(big.NewFloat(0), new(big.Float).SetInt(ps[j].X))
+				Yterm.Mul(Yterm, numo)
 
-				deno := new(big.Int)
-				deno.Sub(ps[i].X, ps[j].X)
-
-				Yterm.Div(numo, deno)
+				deno := new(big.Float)
+				deno.Sub(new(big.Float).SetInt(ps[i].X), new(big.Float).SetInt(ps[j].X))
+				Zterm.Mul(Zterm, deno)
 			}
 		}
-		result.Add(result, Yterm)
+		result.Add(result, new(big.Float).Quo(Yterm, Zterm))
 	}
-	return result
+	intResult := new(big.Int)
+	result.Int(intResult)
+	return intResult
 }
 
 func ComputeLagrange(compressedPoints []CompressedPoints) map[Price]BigInt {
