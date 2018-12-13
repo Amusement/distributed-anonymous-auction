@@ -2,7 +2,6 @@ package common
 
 import (
 	"math/big"
-	"fmt"
 )
 
 type lagrangePoint struct {
