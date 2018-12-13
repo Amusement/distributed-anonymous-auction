@@ -24,8 +24,7 @@ class SSHThread(threading.Thread):
         ssh_stdin, ssh_stdout, ssh_stderr = ssh.exec_command(
             "sudo go run P2-d3w9a-b3c0b-b3l0b-k0b9/auctioneer_main.go P2-d3w9a-b3c0b-b3l0b-k0b9/auctioneer/config.json")
 
-        ssh_stdin.close()
-        for line in iter(lambda: ssh_stdout.readline(2048), ""):
+        for line in iter(ssh_stdout.readline, ""):
             print(line, end="")
 
         ssh.close()
