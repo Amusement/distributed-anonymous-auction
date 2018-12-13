@@ -23,7 +23,7 @@ def createSeller(ip):
     config = json.dumps({'Item': "Fancy chocolate",
     'Auctioneers': [s + ":80" for s in publicIPs[1:]],
     'Interval': "30s",
-    'T': 4,
+    'T': 3,
     'StartTime': time.isoformat()+"Z"}, sort_keys=True,indent=4, separators=(',', ': '))
 
     ftp = ssh.open_sftp()
