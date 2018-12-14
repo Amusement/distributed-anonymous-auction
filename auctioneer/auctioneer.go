@@ -197,7 +197,7 @@ func (a *Auctioneer) runAuctionRound() {
 		for id, frequency := range bidMap {
 			if frequency > currCount {
 				//currID = id.Val
-				newI, _  := big.NewInt(0).SetString(id.Val, 10)
+				newI, _  := big.NewInt(0).SetString(id, 10)
 				currID = newI
 				// Added following
 				currCount = frequency
