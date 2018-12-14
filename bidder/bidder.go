@@ -31,11 +31,10 @@ type Bidder struct {
 	auctioneerPricePoints map[int]map[common.Price]common.Point
 }
 
-func InitBidder(sellerAddr string, bidderIP string, bidderInternalIP string) *Bidder {
+func InitBidder(sellerAddr string, bidderIP string) *Bidder {
 	b := &Bidder{
 		sellerIP: sellerAddr,
 		bidderIP: bidderIP,
-		bidderInternalIP: bidderInternalIP,
 	}
 	//log.Printf("Bidder initialized to: %v", b)
 	return b
@@ -44,7 +43,7 @@ func InitBidder(sellerAddr string, bidderIP string, bidderInternalIP string) *Bi
 // Listens for seller communications
 // Local IP:port?
 func (b *Bidder) ListenSeller() {
-	listener, err := net.Listen("tcp", b.bidderInternalIP+":"+strconv.Itoa(b.bidderPort))
+	listener, err := net.Listen("tcp", b.bidderIP+":"+strconv.Itoa(b.bidderPort))
 	if err != nil {
 		log.Fatalf("Unable to listen for seller communications: ", err)
 	}
