@@ -27,6 +27,9 @@ class SSHThread(threading.Thread):
         for line in iter(ssh_stdout.readline, ""):
             print(line, end="")
 
+        for line in iter(ssh_stderr.readline, ""):
+            print(line, end="")
+
         ssh.close()
 
 
