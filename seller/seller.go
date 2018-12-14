@@ -93,14 +93,14 @@ func (s *Seller) checkRoundTermination() {
 
 				resp, err := client.Do(req)
 				if err != nil {
-					log.Println("error connecting to auctioneer, skipping... ")
+					//log.Println("error connecting to auctioneer, skipping... ")
 					continue
 				}
 				defer resp.Body.Close()
 				if err := json.NewDecoder(resp.Body).Decode(&point); err == nil {
 					individualLagrangePoints = append(individualLagrangePoints, point)
 				} else {
-					log.Println("Didn't receive a valid point from auctioneer ", ipPort)
+					fmt.Println("Didn't receive a valid point from auctioneer ", ipPort)
 				}
 			}
 			// Need at least T auctioneers input?
@@ -126,6 +126,8 @@ func (s *Seller) checkRoundTermination() {
 			}
 			if  majorityOccurrences < (len(s.AuctionRound.Auctioneers) - s.AuctionRound.T) {
 				fmt.Printf("Majority of auctioneers were not in agreement for price %v. Taking the value %v auctioneers agree on.\n", price, majorityOccurrences)
+			} else {
+				fmt.Printf("Majority of auctioneers were in agreement for price %v!\n", price, majorityOccurrences)
 			}
 
 			s.agreedLagrangePoints[common.Price(price)] = common.Point{X:0, Y:majority}

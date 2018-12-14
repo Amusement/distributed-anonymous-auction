@@ -70,7 +70,7 @@ func (b *Bidder) ListenSeller() {
 		}
 
 		// This bidder has won
-		log.Printf("You've won the auction at bid price %v!\n", winnerNotif.WinningPrice)
+		fmt.Printf("You've won the auction at bid price %v!\n", winnerNotif.WinningPrice)
 		os.Exit(0)
 	}
 }

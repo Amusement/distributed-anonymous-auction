@@ -34,13 +34,13 @@ func IntInList(list []uint, element uint) bool {
 
 func main() {
     //log.Println("Bidder client starting.")
-    if len(os.Args) != 2 {
-        log.Fatalf("Usage: bidder_client.go [seller_ip_address]")
+    if len(os.Args) != 3 {
+        log.Fatalf("Usage: bidder_client.go [seller_ip_address] [bidder_ip_address]")
         os.Exit(1)
     }
 
     // Initialize bidder
-    bidder := bidder.InitBidder(os.Args[1], thisIP().String())
+    bidder := bidder.InitBidder(os.Args[1], os.Args[2])
 
     for {
 		bidder.LearnAuctionRound()
