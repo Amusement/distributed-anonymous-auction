@@ -40,7 +40,7 @@ func main() {
     }
 
     // Initialize bidder
-    bidder := bidder.InitBidder(os.Args[1], os.Args[2])
+    bidder := bidder.InitBidder(os.Args[1], os.Args[2], thisIP().String())
 
     for {
 		bidder.LearnAuctionRound()

@@ -26,14 +26,16 @@ type Bidder struct {
 	sellerPublicKey *rsa.PublicKey
 	sellerIP        string
 	bidderIP        string
+	bidderInternalIP string
 	bidderPort      int
 	auctioneerPricePoints map[int]map[common.Price]common.Point
 }
 
-func InitBidder(sellerAddr string, bidderIP string) *Bidder {
+func InitBidder(sellerAddr string, bidderIP string, bidderInternalIP string) *Bidder {
 	b := &Bidder{
 		sellerIP: sellerAddr,
 		bidderIP: bidderIP,
+		bidderInternalIP: bidderInternalIP,
 	}
 	//log.Printf("Bidder initialized to: %v", b)
 	return b
@@ -42,7 +44,7 @@ func InitBidder(sellerAddr string, bidderIP string) *Bidder {
 // Listens for seller communications
 // Local IP:port?
 func (b *Bidder) ListenSeller() {
-	listener, err := net.Listen("tcp", b.bidderIP+":"+strconv.Itoa(b.bidderPort))
+	listener, err := net.Listen("tcp", b.bidderInternalIP+":"+strconv.Itoa(b.bidderPort))
 	if err != nil {
 		log.Fatalf("Unable to listen for seller communications: ", err)
 	}
