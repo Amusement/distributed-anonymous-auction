@@ -127,7 +127,7 @@ func (s *Seller) checkRoundTermination() {
 			if  majorityOccurrences < (len(s.AuctionRound.Auctioneers) - s.AuctionRound.T) {
 				fmt.Printf("Majority of auctioneers were not in agreement for price %v. Taking the value %v auctioneers agree on.\n", price, majorityOccurrences)
 			} else {
-				fmt.Printf("Majority of auctioneers were in agreement for price %v!\n", price, majorityOccurrences)
+				fmt.Printf("Majority of auctioneers were in agreement for price %v!\n", price)
 			}
 
 			s.agreedLagrangePoints[common.Price(price)] = common.Point{X:0, Y:majority}
