@@ -25,10 +25,10 @@ class SSHThread(threading.Thread):
             "sudo go run P2-d3w9a-b3c0b-b3l0b-k0b9/auctioneer_main.go P2-d3w9a-b3c0b-b3l0b-k0b9/auctioneer/config.json")
 
         for line in iter(ssh_stdout.readline, ""):
-            print(line, end="")
+            print(self.ip + ": " + line, end="")
 
         for line in iter(ssh_stderr.readline, ""):
-            print(line, end="")
+            print(self.ip + ": " + line, end="")
 
         ssh.close()
 
